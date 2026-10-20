@@ -3759,18 +3759,18 @@
                 seed = (seed * 16807) % 2147483647;
                 return (seed - 1) / 2147483646;
             };
-            for (let i = 0; i < 155; i++) {
+            for (let i = 0; i < 86; i++) {
                 ctx.fillStyle = colors[1 + Math.floor(random() * (colors.length - 1))];
-                ctx.globalAlpha = 0.42 + random() * 0.38;
+                ctx.globalAlpha = 0.30 + random() * 0.34;
                 ctx.beginPath();
                 const x = random() * canvas.width;
                 const y = random() * canvas.height;
-                const width = 14 + random() * 48;
-                const height = 10 + random() * 36;
-                const points = 5 + Math.floor(random() * 4);
+                const width = 14 + random() * 35;
+                const height = 9 + random() * 27;
+                const points = 6 + Math.floor(random() * 5);
                 for (let point = 0; point < points; point++) {
                     const angle = point / points * Math.PI * 2;
-                    const radius = 0.62 + random() * 0.48;
+                    const radius = 0.68 + random() * 0.44;
                     const px = x + Math.cos(angle) * width * radius;
                     const py = y + Math.sin(angle) * height * radius;
                     if (point === 0) ctx.moveTo(px, py);
@@ -3779,19 +3779,30 @@
                 ctx.closePath();
                 ctx.fill();
             }
-            ctx.globalAlpha = 0.10;
+            ctx.globalAlpha = 0.13;
             ctx.strokeStyle = '#d8d2bd';
             ctx.lineWidth = 1;
-            for (let y = 8; y < canvas.height; y += 8) {
+            for (let y = 10; y < canvas.height; y += 18) {
                 ctx.beginPath();
                 ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y + 2);
+                ctx.lineTo(canvas.width, y + 5);
                 ctx.stroke();
             }
-            ctx.globalAlpha = 0.2;
+            ctx.globalAlpha = 0.21;
             ctx.strokeStyle = '#101615';
             ctx.lineWidth = 2;
             ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24);
+            ctx.globalAlpha = 0.35;
+            ctx.setLineDash([3, 5]);
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = colors[2];
+            for (let y = 24; y < canvas.height; y += 64) {
+                ctx.beginPath();
+                ctx.moveTo(18, y);
+                ctx.lineTo(canvas.width - 18, y);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
             ctx.globalAlpha = 1;
 
             const texture = new THREE.CanvasTexture(canvas);
@@ -3799,26 +3810,116 @@
             texture.wrapT = THREE.RepeatWrapping;
             texture.repeat.set(2, 2);
             texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-            const normalMap = ProceduralTextureEngine.generateNormalMapFromCanvas(canvas, 0.9);
+            const weaveCanvas = document.createElement('canvas');
+            weaveCanvas.width = 512;
+            weaveCanvas.height = 512;
+            const weaveContext = weaveCanvas.getContext('2d');
+            const weavePixels = weaveContext.createImageData(512, 512);
+            for (let y = 0; y < 512; y++) {
+                for (let x = 0; x < 512; x++) {
+                    const offset = (y * 512 + x) * 4;
+                    const thread = ((x % 4) < 2) !== ((y % 4) < 2) ? 19 : -15;
+                    const fiber = Math.floor(random() * 15) - 7;
+                    const value = 128 + thread + fiber;
+                    weavePixels.data[offset] = value;
+                    weavePixels.data[offset + 1] = value;
+                    weavePixels.data[offset + 2] = value;
+                    weavePixels.data[offset + 3] = 255;
+                }
+            }
+            weaveContext.putImageData(weavePixels, 0, 0);
+            const weaveTexture = new THREE.CanvasTexture(weaveCanvas);
+            weaveTexture.wrapS = THREE.RepeatWrapping;
+            weaveTexture.wrapT = THREE.RepeatWrapping;
+            weaveTexture.repeat.copy(texture.repeat);
+            const normalMap = ProceduralTextureEngine.generateNormalMapFromCanvas(weaveCanvas, 0.26);
             normalMap.wrapS = THREE.RepeatWrapping;
             normalMap.wrapT = THREE.RepeatWrapping;
             normalMap.repeat.copy(texture.repeat);
             return new THREE.MeshStandardMaterial({
                 map: texture,
                 normalMap,
-                normalScale: new THREE.Vector2(0.18, 0.18),
+                normalScale: new THREE.Vector2(0.08, 0.08),
+                bumpMap: weaveTexture,
+                bumpScale: 0.0015,
                 roughness,
                 metalness: 0.02
             });
         }
 
         function buildFactionOutfits() {
-            const ctUniform = createUniformMaterial(['#192b35', '#344752', '#65756e', '#12232d']);
-            const tUniform = createUniformMaterial(['#706242', '#8c7c56', '#a29467', '#424738']);
+            const ctUniform = createUniformMaterial(['#182a34', '#2f424c', '#657268', '#101d25']);
+            const tUniform = createUniformMaterial(['#706243', '#8b7951', '#a09264', '#424838']);
             const ctRig = createUniformMaterial(['#111b22', '#1b2930', '#26363b'], 0.76);
-            const tRig = createUniformMaterial(['#342f25', '#4c4432', '#61543a'], 0.84);
-            const armorMat = new THREE.MeshStandardMaterial({ color: 0x18242b, roughness: 0.66, metalness: 0.12 });
-            const tanArmorMat = new THREE.MeshStandardMaterial({ color: 0x514531, roughness: 0.82, metalness: 0.04 });
+            const tRig = createUniformMaterial(['#453d2c', '#665a3d', '#81704c'], 0.84);
+            const createArmorMaterial = (baseColor, highlightColor, seed) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 256;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = baseColor;
+                ctx.fillRect(0, 0, 256, 256);
+                let value = seed;
+                const random = () => {
+                    value = (value * 16807) % 2147483647;
+                    return (value - 1) / 2147483646;
+                };
+                for (let scratch = 0; scratch < 180; scratch++) {
+                    const x = random() * 256;
+                    const y = random() * 256;
+                    ctx.globalAlpha = 0.08 + random() * 0.18;
+                    ctx.strokeStyle = random() > 0.55 ? highlightColor : '#080c0f';
+                    ctx.lineWidth = 0.4 + random() * 1.2;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + (random() - 0.5) * 12, y + 2 + random() * 15);
+                    ctx.stroke();
+                }
+                ctx.globalAlpha = 1;
+                const map = new THREE.CanvasTexture(canvas);
+                map.wrapS = THREE.RepeatWrapping;
+                map.wrapT = THREE.RepeatWrapping;
+                map.repeat.set(2, 2);
+                const normalMap = ProceduralTextureEngine.generateNormalMapFromCanvas(canvas, 0.22);
+                normalMap.wrapS = THREE.RepeatWrapping;
+                normalMap.wrapT = THREE.RepeatWrapping;
+                normalMap.repeat.copy(map.repeat);
+                return new THREE.MeshStandardMaterial({
+                    map,
+                    normalMap,
+                    normalScale: new THREE.Vector2(0.06, 0.06),
+                    color: 0xffffff,
+                    roughness: 0.72,
+                    metalness: 0.08
+                });
+            };
+            const createInsigniaMaterial = (label, baseColor, symbolColor) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 96;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = baseColor;
+                ctx.fillRect(0, 0, 128, 96);
+                ctx.strokeStyle = symbolColor;
+                ctx.lineWidth = 5;
+                ctx.strokeRect(5, 5, 118, 86);
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(20, 70);
+                ctx.lineTo(38, 31);
+                ctx.lineTo(55, 70);
+                ctx.lineTo(73, 31);
+                ctx.lineTo(91, 70);
+                ctx.stroke();
+                ctx.fillStyle = symbolColor;
+                ctx.font = '700 15px monospace';
+                ctx.textAlign = 'right';
+                ctx.fillText(label, 109, 25);
+                const map = new THREE.CanvasTexture(canvas);
+                return new THREE.MeshStandardMaterial({ map, roughness: 0.88, metalness: 0.02 });
+            };
+            const armorMat = createArmorMaterial('#18242b', '#869197', 703);
+            const tanArmorMat = createArmorMaterial('#514531', '#a08d62', 997);
             const webbingMat = new THREE.MeshStandardMaterial({ color: 0x090e12, roughness: 0.87 });
             const tanWebbingMat = new THREE.MeshStandardMaterial({ color: 0x29271f, roughness: 0.91 });
             const rubberMat = new THREE.MeshStandardMaterial({ color: 0x101416, roughness: 0.98 });
@@ -3829,6 +3930,8 @@
             const orangePatchMat = new THREE.MeshStandardMaterial({ color: 0xc67732, roughness: 0.78 });
             const ctMarkMat = new THREE.MeshStandardMaterial({ color: 0x7ea1a0, roughness: 0.58, metalness: 0.1 });
             const tMarkMat = new THREE.MeshStandardMaterial({ color: 0xd1a95f, roughness: 0.74 });
+            const ctInsignia = createInsigniaMaterial('CT', '#20343e', '#b6d0ce');
+            const tInsignia = createInsigniaMaterial('T', '#433a2b', '#e1b96c');
 
             const add = (faction, parent, geometry, material, position, rotation = null) => {
                 const mesh = new THREE.Mesh(geometry, material);
@@ -3853,6 +3956,10 @@
                 add(faction, parent, new THREE.CylinderGeometry(top, bottom, length, segments), material, position);
             const torus = (faction, parent, material, radius, tube, position, rotation = [0, 0, 0]) =>
                 add(faction, parent, new THREE.TorusGeometry(radius, tube, 8, 24), material, position, rotation);
+            const cable = (faction, parent, material, points, radius = 0.004) => {
+                const curve = new THREE.CatmullRomCurve3(points.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
+                return add(faction, parent, new THREE.TubeGeometry(curve, 24, radius, 8, false), material, [0, 0, 0]);
+            };
             const armorPlate = (faction, parent, material, side, y, z, width, height) => {
                 const shape = new THREE.Shape();
                 const outer = side > 0 ? width : -width;
@@ -3921,6 +4028,9 @@
                     box(faction, hip, webbingMat, [0.09, 0.018, 0.055], [side * 0.117, -0.16, -0.105], [0, 0, side * 0.12]);
                     box(faction, hip, patch, [0.028, 0.026, 0.009], [side * 0.117, -0.145, -0.137]);
                     box(faction, hip, webbingMat, [0.035, 0.012, 0.009], [side * 0.117, -0.17, -0.138]);
+                    box(faction, hip, uniform, [0.088, 0.075, 0.01], [side * 0.079, -0.145, -0.104]);
+                    box(faction, hip, webbingMat, [0.076, 0.009, 0.008], [side * 0.079, -0.108, -0.112]);
+                    box(faction, hip, patch, [0.009, 0.018, 0.006], [side * 0.079, -0.145, -0.114]);
 
                     const kneePad = sphere(faction, knee, pad, [0.055, 0.061, 0.026], [0, -0.035, -0.039]);
                     kneePad.rotation.x = -0.12;
@@ -3950,26 +4060,54 @@
                     uniformShell(faction, upperArm, uniform, 0.326, [[0.059, 0.059], [0.060, 0.060]], [0, -0.155, 0], 28, 14);
                     sphere(faction, upperArm, pad, [0.068, 0.052, 0.066], [0, -0.045, -0.003]);
                     uniformShell(faction, forearm, uniform, 0.315, [[0.045, 0.045], [0.036, 0.037]], [0, -0.15, 0], 28, 14);
-                    const bracer = box(faction, forearm, rig, [0.077, 0.14, 0.042], [0, -0.15, -0.036]);
+                    const bracer = box(faction, forearm, rig, [0.084, 0.17, 0.048], [0, -0.15, -0.038]);
                     bracer.rotation.x = -0.12;
-                    box(faction, forearm, pad, [0.056, 0.073, 0.018], [0, -0.135, -0.061]);
+                    const forearmGuard = sphere(faction, forearm, pad, [0.043, 0.091, 0.018], [0, -0.13, -0.061]);
+                    box(faction, forearm, rubberMat, [0.046, 0.104, 0.012], [0, -0.13, -0.077]);
+                    box(faction, forearm, patch, [0.031, 0.061, 0.006], [0, -0.13, -0.085]);
                     box(faction, upperArm, patch, [0.035, 0.025, 0.008], [0, -0.072, -0.063]);
                     cylinder(faction, upperArm, rig, 0.061, 0.061, 0.018, [0, -0.29, 0], 28);
                     cylinder(faction, forearm, rig, 0.046, 0.046, 0.018, [0, -0.29, 0], 28);
+                    const sleeveCuff = torus(faction, upperArm, rig, 0.054, 0.006, [0, -0.272, 0], [Math.PI / 2, 0, 0]);
+                    sleeveCuff.scale.set(1, 0.94, 1);
+                    const wristCuff = torus(faction, forearm, webbingMat, 0.039, 0.006, [0, -0.278, 0], [Math.PI / 2, 0, 0]);
+                    wristCuff.scale.set(1, 0.94, 1);
+                    forearmGuard.rotation.x = -0.12;
                     for (let seam = 0; seam < 5; seam++) {
                         box(faction, forearm, patch, [0.052, 0.003, 0.003], [0, -0.10 - seam * 0.044, -0.046]);
+                    }
+                    for (let stitch = 0; stitch < 4; stitch++) {
+                        box(faction, upperArm, patch, [0.004, 0.027, 0.003],
+                            [side * (0.046 + stitch * 0.006), -0.14, -0.051]);
+                    }
+                    const armSeam = cable(faction, upperArm, webbingMat, [
+                        [-0.038, -0.025, -0.044],
+                        [-0.048, -0.10, -0.035],
+                        [-0.051, -0.19, -0.028],
+                        [-0.043, -0.26, -0.023]
+                    ], 0.0018);
+                    armSeam.scale.x = side;
+                    for (let fastener = 0; fastener < 3; fastener++) {
+                        cylinder(faction, forearm, rubberMat, 0.004, 0.004, 0.004,
+                            [0, -0.10 - fastener * 0.032, -0.088], 8).rotation.x = Math.PI / 2;
                     }
                 });
 
                 uniformShell(faction, spine, uniform, 0.555,
                     [[0.174, 0.131], [0.217, 0.148], [0.009, 0.012]], [0, 0.02, 0], 44, 24);
                 box(faction, pelvis, uniform, [0.29, 0.16, 0.21], [0, -0.11, 0]);
-                box(faction, pelvis, rig, [0.37, 0.085, 0.245], [0, -0.018, 0]);
-                box(faction, pelvis, rubberMat, [0.12, 0.07, 0.018], [0, -0.018, -0.132]);
-                box(faction, pelvis, patch, [0.046, 0.042, 0.013], [-0.033, -0.02, -0.146]);
+                const waistBelt = torus(faction, pelvis, rig, 0.16, 0.026, [0, -0.025, 0], [Math.PI / 2, 0, 0]);
+                waistBelt.scale.set(1, 0.78, 1);
+                const innerBelt = torus(faction, pelvis, webbingMat, 0.155, 0.009, [0, -0.045, 0], [Math.PI / 2, 0, 0]);
+                innerBelt.scale.set(1, 0.80, 1);
+                box(faction, pelvis, rubberMat, [0.12, 0.07, 0.018], [0, -0.018, -0.152]);
+                box(faction, pelvis, patch, [0.046, 0.042, 0.013], [-0.033, -0.02, -0.166]);
+                box(faction, pelvis, webbingMat, [0.046, 0.054, 0.012], [0.033, -0.02, -0.164]);
+                box(faction, pelvis, patch, [0.014, 0.032, 0.006], [0.033, -0.02, -0.173]);
                 [-1, 1].forEach((side) => {
                     box(faction, pelvis, rig, [0.085, 0.10, 0.08], [side * 0.17, -0.045, -0.11]);
                     box(faction, pelvis, rubberMat, [0.071, 0.014, 0.084], [side * 0.17, 0.012, -0.11]);
+                    box(faction, pelvis, webbingMat, [0.055, 0.014, 0.014], [side * 0.155, 0.01, -0.157]);
                 });
 
                 const vest = new THREE.Group();
@@ -3990,8 +4128,8 @@
                 box(faction, vest, webbingMat, [0.30, 0.014, 0.012], [0, -0.147, -0.17]);
                 box(faction, vest, webbingMat, [0.29, 0.018, 0.016], [0, 0.213, -0.168]);
                 box(faction, vest, webbingMat, [0.29, 0.018, 0.016], [0, 0.012, -0.171]);
-                box(faction, vest, patch, [0.075, 0.035, 0.008], [-0.105, 0.158, -0.173]);
-                box(faction, vest, patch, [0.055, 0.026, 0.008], [0.102, 0.157, -0.173]);
+                box(faction, vest, faction === 'CT' ? ctInsignia : tInsignia, [0.075, 0.055, 0.008], [-0.105, 0.158, -0.173]);
+                box(faction, vest, faction === 'CT' ? ctInsignia : tInsignia, [0.055, 0.043, 0.008], [0.102, 0.157, -0.173]);
                 box(faction, vest, webbingMat, [0.018, 0.12, 0.012], [-0.086, 0.075, -0.22], [0, 0, -0.18]);
                 box(faction, vest, webbingMat, [0.018, 0.12, 0.012], [0.086, 0.075, -0.22], [0, 0, 0.18]);
                 for (let bolt = 0; bolt < 4; bolt++) {
@@ -4009,6 +4147,18 @@
                     box(faction, vest, pad, [0.073, 0.028, 0.047], [x, -0.061, -0.171]);
                     box(faction, vest, webbingMat, [0.064, 0.012, 0.008], [x, -0.058, -0.195]);
                     cylinder(faction, vest, rubberMat, 0.007, 0.007, 0.012, [x, -0.071, -0.202], 10).rotation.x = Math.PI / 2;
+                }
+                for (let side = -1; side <= 1; side += 2) {
+                    for (let plateRivet = 0; plateRivet < 3; plateRivet++) {
+                        const y = 0.167 - plateRivet * 0.076;
+                        cylinder(faction, vest, webbingMat, 0.005, 0.005, 0.005,
+                            [side * 0.119, y, -0.218], 8).rotation.x = Math.PI / 2;
+                    }
+                    box(faction, vest, patch, [0.005, 0.12, 0.004], [side * 0.148, 0.075, -0.217]);
+                }
+                box(faction, vest, rubberMat, [0.042, 0.022, 0.012], [-0.047, 0.035, -0.218]);
+                for (let loop = 0; loop < 4; loop++) {
+                    box(faction, vest, patch, [0.014, 0.029, 0.008], [-0.062 + loop * 0.01, 0.035, -0.226]);
                 }
                 box(faction, vest, rubberMat, [0.12, 0.07, 0.052], [0.205, -0.01, -0.07], [0, 0, -0.12]);
                 box(faction, vest, patch, [0.036, 0.036, 0.01], [0.205, -0.005, -0.101]);
@@ -4038,6 +4188,26 @@
                 for (let radioSlot = 0; radioSlot < 3; radioSlot++) {
                     box(faction, vest, webbingMat, [0.021, 0.005, 0.008], [-0.213, 0.085 - radioSlot * 0.012, -0.024]);
                 }
+                cable(faction, vest, webbingMat, [
+                    [-0.19, 0.18, 0.12],
+                    [-0.20, 0.22, 0.07],
+                    [-0.18, 0.18, 0.01],
+                    [-0.20, 0.11, -0.03]
+                ], 0.0035);
+                cable(faction, vest, webbingMat, [
+                    [0.18, 0.19, 0.11],
+                    [0.20, 0.23, 0.065],
+                    [0.19, 0.16, 0.005],
+                    [0.21, 0.11, -0.04]
+                ], 0.0035);
+                for (let strap = 0; strap < 2; strap++) {
+                    const side = strap === 0 ? -1 : 1;
+                    box(faction, vest, webbingMat, [0.034, 0.31, 0.02], [side * 0.123, 0.05, -0.178], [0, 0, side * 0.12]);
+                    for (let stitch = 0; stitch < 8; stitch++) {
+                        box(faction, vest, patch, [0.003, 0.012, 0.003],
+                            [side * 0.123, -0.087 + stitch * 0.037, -0.191]);
+                    }
+                }
                 for (let mag = 0; mag < 3; mag++) {
                     const x = (mag - 1) * 0.073;
                     box(faction, vest, rubberMat, [0.046, 0.068, 0.018], [x, 0.00, -0.206]);
@@ -4049,7 +4219,7 @@
                     const shoulder = side === 1 ? skeletonRig.rightUpperArmSeg : skeletonRig.leftUpperArmSeg;
                     sphere(faction, shoulder, pad, [0.073, 0.058, 0.062], [0, -0.04, 0]);
                     sphere(faction, shoulder, rig, [0.067, 0.048, 0.034], [side * 0.008, -0.04, -0.037]);
-                    box(faction, shoulder, patch, [0.044, 0.031, 0.009], [0, -0.045, -0.063]);
+                    box(faction, shoulder, faction === 'CT' ? ctInsignia : tInsignia, [0.052, 0.039, 0.009], [0, -0.045, -0.066]);
                     const shoulderTrim = torus(faction, shoulder, rig, 0.047, 0.005, [0, -0.04, -0.031]);
                     shoulderTrim.scale.set(1.3, 0.86, 0.75);
                     box(faction, shoulder, webbingMat, [0.060, 0.022, 0.015], [0, -0.045, -0.069]);
@@ -4058,6 +4228,11 @@
                     }
                     const sleeveBand = torus(faction, shoulder, webbingMat, 0.051, 0.008, [0, -0.095, 0]);
                     sleeveBand.scale.set(1.08, 0.92, 0.96);
+                    box(faction, shoulder, rig, [0.075, 0.035, 0.071], [0, 0.005, 0], [0, 0, side * 0.08]);
+                    for (let armorRib = 0; armorRib < 3; armorRib++) {
+                        box(faction, shoulder, patch, [0.055, 0.004, 0.006],
+                            [0, -0.004 - armorRib * 0.012, -0.044]);
+                    }
                 });
 
                 sphere(faction, head, rig, [0.091, 0.114, 0.108], [0, 0.005, 0]);
@@ -4072,6 +4247,10 @@
                 const faceGuard = sphere(faction, head, scarf, [0.075, 0.057, 0.049], [0, -0.032, -0.073]);
                 faceGuard.rotation.x = -0.12;
                 box(faction, head, rubberMat, [0.067, 0.012, 0.008], [0, -0.050, -0.119]);
+                box(faction, head, rubberMat, [0.018, 0.032, 0.01], [-0.073, -0.025, -0.072]);
+                box(faction, head, rubberMat, [0.018, 0.032, 0.01], [0.073, -0.025, -0.072]);
+                box(faction, head, patch, [0.026, 0.006, 0.004], [-0.019, -0.055, -0.122]);
+                box(faction, head, patch, [0.026, 0.006, 0.004], [0.019, -0.055, -0.122]);
             };
 
             limbKit('CT', ctUniform, ctRig, armorMat, bootMat, lensMat, ctMarkMat, armorMat);
@@ -4130,6 +4309,30 @@
             box('CT', tHead, armorMat, [0.105, 0.012, 0.018], [0, 0.166, -0.012]);
             box('CT', tHead, patchMat, [0.04, 0.021, 0.008], [0.068, 0.12, -0.105]);
             box('T', tHead, orangePatchMat, [0.04, 0.021, 0.008], [-0.068, 0.12, -0.105]);
+            for (let side = -1; side <= 1; side += 2) {
+                box('CT', tHead, rubberMat, [0.012, 0.085, 0.08], [side * 0.103, 0.085, 0.005]);
+                for (let rail = 0; rail < 4; rail++) {
+                    box('CT', tHead, patchMat, [0.008, 0.012, 0.022], [side * 0.112, 0.055 + rail * 0.02, 0.004]);
+                }
+                sphere('CT', tHead, armorMat, [0.015, 0.018, 0.016], [side * 0.096, 0.013, 0.035]);
+                box('T', tHead, tRig, [0.01, 0.045, 0.07], [side * 0.099, 0.038, 0.01]);
+                box('T', tHead, orangePatchMat, [0.012, 0.009, 0.052], [side * 0.106, 0.038, 0.01]);
+            }
+            const ctForeheadShroud = sphere('CT', tHead, armorMat, [0.066, 0.018, 0.016], [0, 0.123, -0.09]);
+            ctForeheadShroud.rotation.x = -0.18;
+            box('CT', tHead, rubberMat, [0.03, 0.027, 0.023], [0, 0.135, -0.099]);
+            box('CT', tHead, patchMat, [0.018, 0.012, 0.004], [0, 0.141, -0.113]);
+            for (let band = 0; band < 3; band++) {
+                const y = 0.015 + band * 0.012;
+                box('T', tHead, orangePatchMat, [0.158, 0.003, 0.008], [0, y, -0.126]);
+            }
+            cable('CT', tHead, rubberMat, [
+                [0.092, 0.012, 0.025],
+                [0.112, -0.006, -0.004],
+                [0.082, -0.018, -0.04],
+                [0.046, -0.026, -0.055]
+            ], 0.003);
+            sphere('CT', tHead, armorMat, [0.011, 0.011, 0.011], [0.046, -0.026, -0.055]);
 
             const ctRadioCable = new THREE.CatmullRomCurve3([
                 new THREE.Vector3(-0.09, 0.24, 0.045),
