@@ -865,7 +865,7 @@
             AWP: { duration: 5.8, axis: [1, 0, 0], frames: [[0, 0, 0, 0, 0, 0, 0], [0.16, 0.10, -0.20, -0.12, 0, 0, 0.2], [0.36, -0.06, 0.34, 0.18, 0, 0, 0.42], [0.56, 0.12, -0.42, -0.16, 0, 0, 0.72], [0.76, -0.08, 0.32, 0.12, 0, 0, 0.9], [0.88, 0.04, 0.12, -0.08, 0, 0, 0.45], [1, 0, 0, 0, 0, 0, 0]] },
             DEAGLE: { duration: 4.9, axis: [0, 0, 1], frames: [[0, 0, 0, 0, 0, 0, 0], [0.16, -0.12, 0.14, 0.12, 0, 0, 0.24], [0.36, 0.08, -0.32, 0.22, 0, 0, 0.56], [0.58, -0.10, 0.38, -0.16, 0, 0, 0.84], [0.78, 0.04, -0.16, 0.12, 0, 0, 0.55], [0.9, -0.04, 0.10, -0.08, 0, 0, 0.28], [1, 0, 0, 0, 0, 0, 0]] },
             BAYONET: { duration: 5.1, axis: [0, 1, 0], frames: [[0, 0, 0, 0, 0, 0, 0], [0.16, -0.12, 0.18, -0.16, 0.35, 0, 0.22], [0.36, 0.08, 0.34, 0.24, 1.4, 0, 0.56], [0.58, -0.08, -0.32, -0.12, 2.7, 0, 0.84], [0.78, 0.06, 0.20, -0.10, 3.1, 0, 0.68], [0.9, -0.04, 0.10, 0.08, 3.1, 0, 0.3], [1, 0, 0, 0, 3.1, 0, 0]] },
-            KARAMBIT: { duration: 5.4, axis: [1, 0, 0], frames: [[0, 0, 0, 0, 0, 0, 0], [0.14, -0.12, 0.20, -0.18, 1.0, 0, 0.24], [0.34, 0.08, 0.38, 0.28, 2.5, 0, 0.58], [0.56, -0.05, 0.20, -0.12, 4.4, 0, 0.86], [0.76, 0.02, -0.08, 0.06, 6.0, 0, 0.68], [0.9, 0.02, 0.08, 0.04, 6.0, 0, 0.28], [1, 0, 0, 0, 6.0, 0, 0]] },
+            KARAMBIT: { duration: 5.4, axis: [1, 0, 0], frames: [[0, 0, 0, 0, 0, 0, 1], [0.12, -0.12, 0.20, -0.18, 0.18, 0, 0.82], [0.25, 0.08, 0.38, 0.28, 0.55, 0, 0.36], [0.43, -0.05, 0.20, -0.12, 2.8, 0, 0.14], [0.62, 0.02, -0.08, 0.06, 5.7, 0, 0.28], [0.74, 0.04, -0.08, 0.04, 6.283185307, 0, 0.95], [0.84, 0.02, 0.08, 0.04, 6.283185307, 0, 1], [0.94, 0, 0, 0, 6.283185307, 0, 1], [1, 0, 0, 0, 6.283185307, 0, 1]] },
             BUTTERFLY: { duration: 5.4, axis: [1, 0, 0], frames: [[0, 0, 0, 0, 0, 0, 0], [0.14, -0.14, 0.12, -0.20, 0, 0.85, 0.25], [0.34, 0.04, 0.30, 0.28, 0, -1.15, 0.72], [0.54, -0.06, 0.42, -0.16, 0, 1.25, 0.92], [0.74, 0.04, 0.12, 0.08, 0, 0.28, 0.76], [0.88, -0.04, -0.10, 0.04, 0, 0.0, 0.36], [1, 0, 0, 0, 0, 0, 0]] },
             TALON: { duration: 5.0, axis: [0, 0, 1], frames: [[0, 0, 0, 0, 0, 0, 0], [0.16, -0.10, 0.16, -0.15, 0.4, 0, 0.22], [0.36, 0.10, 0.26, 0.20, 1.4, 0, 0.55], [0.58, -0.05, 0.16, -0.08, 2.7, 0, 0.84], [0.78, 0.04, -0.12, 0.08, 3.8, 0, 0.62], [0.9, -0.04, 0.08, -0.05, 3.8, 0, 0.3], [1, 0, 0, 0, 3.8, 0, 0]] },
             BOWIE: { duration: 5.1, axis: [0, 1, 0], frames: [[0, 0, 0, 0, 0, 0, 0], [0.16, -0.08, 0.18, -0.14, 0.15, 0, 0.22], [0.36, 0.08, 0.36, 0.20, 0.40, 0, 0.56], [0.58, -0.06, -0.28, -0.08, 0.72, 0, 0.84], [0.78, 0.04, 0.18, -0.08, 0.85, 0, 0.64], [0.9, -0.04, 0.08, 0.04, 0.85, 0, 0.28], [1, 0, 0, 0, 0.85, 0, 0]] },
@@ -4714,6 +4714,19 @@
                             f[name].pipJoint.rotation.set(1.52 + inspectGrip * 0.16, 0, 0);
                             f[name].dipJoint.rotation.set(1.12 + inspectGrip * 0.12, 0, 0);
             });
+          } else if (role === 'RIGHT_KARAMBIT_INSPECT') {
+                        const catchGrip = THREE.MathUtils.clamp(triggerPull, 0, 1);
+                        thumbBase.rotation.set(0.34 + catchGrip * 0.08, -0.18, 0.28 + catchGrip * 0.20);
+                        thumbDistal.rotation.set(0.20 + catchGrip * 0.15, 0, 0);
+
+                        f.index.mcpJoint.rotation.set(0.68 + catchGrip * 0.54, 0, 0.06);
+                        f.index.pipJoint.rotation.set(0.78 + catchGrip * 0.58, 0, 0);
+                        f.index.dipJoint.rotation.set(0.60 + catchGrip * 0.35, 0, 0);
+                        ['middle', 'ring', 'pinky'].forEach((name, idx) => {
+                            f[name].mcpJoint.rotation.set(0.28 + catchGrip * 1.16 + idx * 0.05, 0, 0);
+                            f[name].pipJoint.rotation.set(0.34 + catchGrip * 1.18, 0, 0);
+                            f[name].dipJoint.rotation.set(0.30 + catchGrip * 0.82, 0, 0);
+                        });
           } else if (role === 'RIGHT_KNIFE') {
                         const inspectGrip = THREE.MathUtils.clamp(triggerPull, 0, 1);
                         thumbBase.rotation.set(0.68 + inspectGrip * 0.12, -side * 0.20, side * (0.58 - inspectGrip * 0.10));
@@ -5023,8 +5036,9 @@
           const rightHandRole = !isKnife ? 'RIGHT_RIFLE' : (state.equipped === 'KARAMBIT' ? 'RIGHT_KARAMBIT' : 'RIGHT_KNIFE');
           const inspectGrip = inspectPose ? inspectPose.grip : 0;
           const firearmInspect = Boolean(inspectPose && !isKnife);
+          const karambitInspect = Boolean(inspectPose && state.equipped === 'KARAMBIT');
           const knifeInspect = Boolean(inspectPose && isKnife);
-          const activeRightHandRole = firearmInspect ? 'RIGHT_INSPECT' : rightHandRole;
+          const activeRightHandRole = firearmInspect ? 'RIGHT_INSPECT' : (karambitInspect ? 'RIGHT_KARAMBIT_INSPECT' : rightHandRole);
           const rightHandGrip = knifeInspect ? inspectGrip : (firearmInspect ? inspectGrip : state.recoilKick);
           poseHandForWeapon(skeletonRig.rightHand, 1, activeRightHandRole, rightHandGrip);
           const reloadProgress = THREE.MathUtils.clamp(state.reloadProgress, 0, 1);
