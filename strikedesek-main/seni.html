@@ -773,6 +773,11 @@
                 <span id="reload-lbl" class="text-[8px] mt-0.5 text-emerald-300">ŞARJÖR</span>
             </button>
 
+            <button onclick="triggerInspectWeapon()" class="touch-action-btn absolute rounded-full flex flex-col items-center justify-center text-white font-bold" style="width: 44px; height: 44px; bottom: 118px; right: 108px;" title="Silahı incele (F)" aria-label="Silahı incele">
+                <span class="text-xs leading-none">🔍</span>
+                <span class="text-[8px] mt-0.5 text-amber-300">İNCELE</span>
+            </button>
+
             <button onclick="triggerJump()" class="touch-action-btn absolute rounded-full flex flex-col items-center justify-center text-white font-bold" style="width: 42px; height: 42px; bottom: 42px; right: 122px;">
                 <span class="text-xs leading-none">⬆️</span>
                 <span class="text-[8px] mt-0.5 text-slate-200">ZIPLA</span>
@@ -5416,7 +5421,9 @@
                     document.getElementById('btn-touch-ads').classList.remove('pressed');
                 }
             });
-            container.addEventListener('contextmenu', (e) => e.preventDefault());
+            document.addEventListener('contextmenu', (e) => {
+                if (e.target.closest('button, #canvas-container')) e.preventDefault();
+            });
 
             window.addEventListener('wheel', (e) => {
                 if (state.cameraMode === 'INSPECT') {
