@@ -2240,6 +2240,8 @@
             hairCap.position.set(0, 0.084, -0.004);
             faceCore.add(hairCap);
 
+            headGroup.userData.faceCore = faceCore;
+            headGroup.userData.hairCap = hairCap;
             return headGroup;
         }
 
@@ -3752,29 +3754,44 @@
             ctx.fillStyle = colors[0];
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            let seed = 37;
+            let seed = colors.reduce((hash, color) => (hash * 33 + color.charCodeAt(1)) % 2147483647, 37) || 37;
             const random = () => {
                 seed = (seed * 16807) % 2147483647;
                 return (seed - 1) / 2147483646;
             };
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < 155; i++) {
                 ctx.fillStyle = colors[1 + Math.floor(random() * (colors.length - 1))];
-                ctx.globalAlpha = 0.25 + random() * 0.38;
+                ctx.globalAlpha = 0.42 + random() * 0.38;
                 ctx.beginPath();
                 const x = random() * canvas.width;
                 const y = random() * canvas.height;
-                ctx.ellipse(x, y, 10 + random() * 34, 4 + random() * 16, random() * Math.PI, 0, Math.PI * 2);
+                const width = 14 + random() * 48;
+                const height = 10 + random() * 36;
+                const points = 5 + Math.floor(random() * 4);
+                for (let point = 0; point < points; point++) {
+                    const angle = point / points * Math.PI * 2;
+                    const radius = 0.62 + random() * 0.48;
+                    const px = x + Math.cos(angle) * width * radius;
+                    const py = y + Math.sin(angle) * height * radius;
+                    if (point === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
                 ctx.fill();
             }
-            ctx.globalAlpha = 0.16;
-            ctx.strokeStyle = '#101615';
+            ctx.globalAlpha = 0.10;
+            ctx.strokeStyle = '#d8d2bd';
             ctx.lineWidth = 1;
-            for (let y = 8; y < canvas.height; y += 12) {
+            for (let y = 8; y < canvas.height; y += 8) {
                 ctx.beginPath();
                 ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y + 4);
+                ctx.lineTo(canvas.width, y + 2);
                 ctx.stroke();
             }
+            ctx.globalAlpha = 0.2;
+            ctx.strokeStyle = '#101615';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24);
             ctx.globalAlpha = 1;
 
             const texture = new THREE.CanvasTexture(canvas);
@@ -3782,25 +3799,26 @@
             texture.wrapT = THREE.RepeatWrapping;
             texture.repeat.set(2, 2);
             texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-            const normalMap = ProceduralTextureEngine.generateNormalMapFromCanvas(canvas, 0.55);
+            const normalMap = ProceduralTextureEngine.generateNormalMapFromCanvas(canvas, 0.9);
             normalMap.wrapS = THREE.RepeatWrapping;
             normalMap.wrapT = THREE.RepeatWrapping;
             normalMap.repeat.copy(texture.repeat);
             return new THREE.MeshStandardMaterial({
                 map: texture,
                 normalMap,
-                normalScale: new THREE.Vector2(0.24, 0.24),
+                normalScale: new THREE.Vector2(0.18, 0.18),
                 roughness,
                 metalness: 0.02
             });
         }
 
         function buildFactionOutfits() {
-            const ctUniform = createUniformMaterial(['#263640', '#40545a', '#65706a', '#18252c']);
-            const tUniform = createUniformMaterial(['#554832', '#81704e', '#9a8154', '#353b2b']);
+            const ctUniform = createUniformMaterial(['#192b35', '#344752', '#65756e', '#12232d']);
+            const tUniform = createUniformMaterial(['#706242', '#8c7c56', '#a29467', '#424738']);
             const ctRig = createUniformMaterial(['#111b22', '#1b2930', '#26363b'], 0.76);
             const tRig = createUniformMaterial(['#342f25', '#4c4432', '#61543a'], 0.84);
-            const armorMat = new THREE.MeshStandardMaterial({ color: 0x18242b, roughness: 0.48, metalness: 0.22 });
+            const armorMat = new THREE.MeshStandardMaterial({ color: 0x18242b, roughness: 0.66, metalness: 0.12 });
+            const tanArmorMat = new THREE.MeshStandardMaterial({ color: 0x514531, roughness: 0.82, metalness: 0.04 });
             const webbingMat = new THREE.MeshStandardMaterial({ color: 0x090e12, roughness: 0.87 });
             const tanWebbingMat = new THREE.MeshStandardMaterial({ color: 0x29271f, roughness: 0.91 });
             const rubberMat = new THREE.MeshStandardMaterial({ color: 0x101416, roughness: 0.98 });
@@ -3809,6 +3827,8 @@
             const amberLensMat = new THREE.MeshStandardMaterial({ color: 0xc17b2d, roughness: 0.22, metalness: 0.42, emissive: 0x301809, emissiveIntensity: 0.18 });
             const patchMat = new THREE.MeshStandardMaterial({ color: 0xc4d4cf, roughness: 0.7, metalness: 0.08 });
             const orangePatchMat = new THREE.MeshStandardMaterial({ color: 0xc67732, roughness: 0.78 });
+            const ctMarkMat = new THREE.MeshStandardMaterial({ color: 0x7ea1a0, roughness: 0.58, metalness: 0.1 });
+            const tMarkMat = new THREE.MeshStandardMaterial({ color: 0xd1a95f, roughness: 0.74 });
 
             const add = (faction, parent, geometry, material, position, rotation = null) => {
                 const mesh = new THREE.Mesh(geometry, material);
@@ -3831,15 +3851,60 @@
             };
             const cylinder = (faction, parent, material, top, bottom, length, position, segments = 16) =>
                 add(faction, parent, new THREE.CylinderGeometry(top, bottom, length, segments), material, position);
+            const torus = (faction, parent, material, radius, tube, position, rotation = [0, 0, 0]) =>
+                add(faction, parent, new THREE.TorusGeometry(radius, tube, 8, 24), material, position, rotation);
+            const armorPlate = (faction, parent, material, side, y, z, width, height) => {
+                const shape = new THREE.Shape();
+                const outer = side > 0 ? width : -width;
+                shape.moveTo(side * 0.006, y + height * 0.5);
+                shape.quadraticCurveTo(side * width * 0.5, y + height * 0.58, outer, y + height * 0.31);
+                shape.lineTo(side * width * 0.94, y - height * 0.25);
+                shape.quadraticCurveTo(side * width * 0.78, y - height * 0.45, side * width * 0.55, y - height * 0.5);
+                shape.lineTo(side * 0.015, y - height * 0.39);
+                shape.lineTo(side * 0.015, y + height * 0.19);
+                shape.closePath();
+                const geometry = new THREE.ExtrudeGeometry(shape, {
+                    depth: 0.012,
+                    bevelEnabled: true,
+                    bevelSegments: 2,
+                    steps: 1,
+                    bevelSize: 0.006,
+                    bevelThickness: 0.005,
+                    curveSegments: 8
+                });
+                geometry.computeVertexNormals();
+                const plate = add(faction, parent, geometry, material, [0, 0, z]);
+                plate.material.side = THREE.DoubleSide;
+                return plate;
+            };
+            const uniformShell = (faction, parent, material, length, profile, position, segments = 36, rows = 18) => {
+                const geometry = new THREE.CylinderGeometry(1, 1, length, segments, rows);
+                const vertices = geometry.attributes.position;
+                for (let index = 0; index < vertices.count; index++) {
+                    const y = vertices.getY(index);
+                    const t = THREE.MathUtils.clamp(y / length + 0.5, 0, 1);
+                    const lower = profile[0];
+                    const upper = profile[1];
+                    const bulge = Math.sin(t * Math.PI);
+                    const radiusX = THREE.MathUtils.lerp(lower[0], upper[0], t) + bulge * (profile[2]?.[0] || 0);
+                    const radiusZ = THREE.MathUtils.lerp(lower[1], upper[1], t) + bulge * (profile[2]?.[1] || 0);
+                    vertices.setXYZ(index, vertices.getX(index) * radiusX, y, vertices.getZ(index) * radiusZ);
+                }
+                vertices.needsUpdate = true;
+                geometry.computeVertexNormals();
+                const mesh = add(faction, parent, geometry, material, position);
+                mesh.material.side = THREE.DoubleSide;
+                return mesh;
+            };
             const limbKit = (faction, uniform, rig, pad, bootMaterial, lens, patch, scarf) => {
                 const spine = skeletonRig.spine;
                 const pelvis = skeletonRig.pelvis;
                 const head = skeletonRig.head;
 
-                cylinder(faction, skeletonRig.leftHip, uniform, 0.071, 0.049, 0.43, [0, -0.21, 0], 20);
-                cylinder(faction, skeletonRig.rightHip, uniform, 0.071, 0.049, 0.43, [0, -0.21, 0], 20);
-                cylinder(faction, skeletonRig.leftKnee, uniform, 0.050, 0.039, 0.41, [0, -0.205, 0], 20);
-                cylinder(faction, skeletonRig.rightKnee, uniform, 0.050, 0.039, 0.41, [0, -0.205, 0], 20);
+                uniformShell(faction, skeletonRig.leftHip, uniform, 0.445, [[0.091, 0.092], [0.070, 0.071], [0.006, 0.006]], [0, -0.21, 0]);
+                uniformShell(faction, skeletonRig.rightHip, uniform, 0.445, [[0.091, 0.092], [0.070, 0.071], [0.006, 0.006]], [0, -0.21, 0]);
+                uniformShell(faction, skeletonRig.leftKnee, uniform, 0.438, [[0.058, 0.061], [0.045, 0.047], [0.003, 0.004]], [0, -0.205, 0]);
+                uniformShell(faction, skeletonRig.rightKnee, uniform, 0.438, [[0.058, 0.061], [0.045, 0.047], [0.003, 0.004]], [0, -0.205, 0]);
 
                 [-1, 1].forEach((side) => {
                     const hip = side === 1 ? skeletonRig.rightHip : skeletonRig.leftHip;
@@ -3850,10 +3915,19 @@
 
                     box(faction, hip, rig, [0.075, 0.105, 0.042], [side * 0.073, -0.20, -0.014], [0, 0, side * -0.08]);
                     box(faction, hip, patch, [0.041, 0.025, 0.008], [side * 0.073, -0.19, -0.038]);
+                    box(faction, hip, rig, [0.082, 0.105, 0.048], [side * 0.079, -0.135, -0.076], [0, 0, side * -0.06]);
+                    box(faction, hip, webbingMat, [0.066, 0.012, 0.008], [side * 0.079, -0.087, -0.102]);
+                    box(faction, hip, patch, [0.048, 0.008, 0.006], [side * 0.079, -0.166, -0.102]);
+                    box(faction, hip, webbingMat, [0.09, 0.018, 0.055], [side * 0.117, -0.16, -0.105], [0, 0, side * 0.12]);
+                    box(faction, hip, patch, [0.028, 0.026, 0.009], [side * 0.117, -0.145, -0.137]);
+                    box(faction, hip, webbingMat, [0.035, 0.012, 0.009], [side * 0.117, -0.17, -0.138]);
 
                     const kneePad = sphere(faction, knee, pad, [0.055, 0.061, 0.026], [0, -0.035, -0.039]);
                     kneePad.rotation.x = -0.12;
                     box(faction, knee, rubberMat, [0.065, 0.012, 0.012], [0, -0.076, -0.049]);
+                    for (let tread = 0; tread < 3; tread++) {
+                        box(faction, knee, patch, [0.034, 0.004, 0.004], [0, -0.026 - tread * 0.013, -0.065]);
+                    }
 
                     box(faction, knee, rig, [0.018, 0.12, 0.018], [side * 0.041, -0.20, -0.012]);
                     const bootMesh = box(faction, ankle, bootMaterial, [0.115, 0.095, 0.23], [0, -0.019, -0.078]);
@@ -3862,19 +3936,37 @@
                     for (let lace = 0; lace < 4; lace++) {
                         box(faction, ankle, patch, [0.045, 0.004, 0.006], [0, 0.032 - lace * 0.012, -0.133 + lace * 0.025]);
                     }
+                    cylinder(faction, ankle, rig, 0.058, 0.058, 0.018, [0, 0.025, 0.005], 24);
+                    box(faction, ankle, rubberMat, [0.035, 0.018, 0.008], [0, 0.026, -0.045]);
+                    box(faction, ankle, rig, [0.085, 0.024, 0.10], [0, 0.047, -0.06]);
+                    box(faction, ankle, patch, [0.056, 0.018, 0.009], [0, 0.048, -0.115]);
+                    for (let tread = 0; tread < 5; tread++) {
+                        box(faction, ankle, rubberMat, [0.105, 0.004, 0.012], [0, -0.074, -0.15 + tread * 0.036]);
+                    }
+                    for (let speedHook = 0; speedHook < 3; speedHook++) {
+                        box(faction, ankle, patch, [0.012, 0.009, 0.009], [side * 0.045, 0.019 - speedHook * 0.018, -0.11 + speedHook * 0.028]);
+                    }
 
-                    cylinder(faction, upperArm, uniform, 0.054, 0.047, 0.31, [0, -0.155, 0], 18);
+                    uniformShell(faction, upperArm, uniform, 0.326, [[0.059, 0.059], [0.060, 0.060]], [0, -0.155, 0], 28, 14);
                     sphere(faction, upperArm, pad, [0.068, 0.052, 0.066], [0, -0.045, -0.003]);
-                    cylinder(faction, forearm, uniform, 0.044, 0.032, 0.30, [0, -0.15, 0], 18);
+                    uniformShell(faction, forearm, uniform, 0.315, [[0.045, 0.045], [0.036, 0.037]], [0, -0.15, 0], 28, 14);
                     const bracer = box(faction, forearm, rig, [0.077, 0.14, 0.042], [0, -0.15, -0.036]);
                     bracer.rotation.x = -0.12;
                     box(faction, forearm, pad, [0.056, 0.073, 0.018], [0, -0.135, -0.061]);
                     box(faction, upperArm, patch, [0.035, 0.025, 0.008], [0, -0.072, -0.063]);
+                    cylinder(faction, upperArm, rig, 0.061, 0.061, 0.018, [0, -0.29, 0], 28);
+                    cylinder(faction, forearm, rig, 0.046, 0.046, 0.018, [0, -0.29, 0], 28);
+                    for (let seam = 0; seam < 5; seam++) {
+                        box(faction, forearm, patch, [0.052, 0.003, 0.003], [0, -0.10 - seam * 0.044, -0.046]);
+                    }
                 });
 
+                uniformShell(faction, spine, uniform, 0.555,
+                    [[0.174, 0.131], [0.217, 0.148], [0.009, 0.012]], [0, 0.02, 0], 44, 24);
                 box(faction, pelvis, uniform, [0.29, 0.16, 0.21], [0, -0.11, 0]);
                 box(faction, pelvis, rig, [0.37, 0.085, 0.245], [0, -0.018, 0]);
                 box(faction, pelvis, rubberMat, [0.12, 0.07, 0.018], [0, -0.018, -0.132]);
+                box(faction, pelvis, patch, [0.046, 0.042, 0.013], [-0.033, -0.02, -0.146]);
                 [-1, 1].forEach((side) => {
                     box(faction, pelvis, rig, [0.085, 0.10, 0.08], [side * 0.17, -0.045, -0.11]);
                     box(faction, pelvis, rubberMat, [0.071, 0.014, 0.084], [side * 0.17, 0.012, -0.11]);
@@ -3885,42 +3977,105 @@
                 vest.visible = state.faction === faction;
                 factionOutfits[faction].push(vest);
 
-                box(faction, vest, rig, [0.39, 0.38, 0.058], [0, 0.015, -0.125]);
-                box(faction, vest, uniform, [0.30, 0.31, 0.05], [0, 0.015, 0.118]);
-                box(faction, vest, webbingMat, [0.045, 0.39, 0.036], [-0.148, 0.02, -0.145], [0, 0, -0.14]);
-                box(faction, vest, webbingMat, [0.045, 0.39, 0.036], [0.148, 0.02, -0.145], [0, 0, 0.14]);
-                box(faction, vest, pad, [0.29, 0.16, 0.016], [0, 0.142, -0.162]);
+                box(faction, vest, rig, [0.38, 0.39, 0.075], [0, 0.015, -0.12]);
+                box(faction, vest, uniform, [0.32, 0.33, 0.055], [0, 0.015, 0.112]);
+                box(faction, vest, webbingMat, [0.042, 0.39, 0.036], [-0.162, 0.02, -0.145], [0, 0, -0.14]);
+                box(faction, vest, webbingMat, [0.042, 0.39, 0.036], [0.162, 0.02, -0.145], [0, 0, 0.14]);
+                armorPlate(faction, vest, pad, -1, 0.087, -0.201, 0.164, 0.26);
+                armorPlate(faction, vest, pad, 1, 0.087, -0.201, 0.164, 0.26);
+                armorPlate(faction, vest, rig, -1, -0.072, -0.203, 0.137, 0.13);
+                armorPlate(faction, vest, rig, 1, -0.072, -0.203, 0.137, 0.13);
+                box(faction, vest, rubberMat, [0.014, 0.29, 0.009], [0, 0.037, -0.219]);
+                box(faction, vest, webbingMat, [0.30, 0.014, 0.012], [0, 0.218, -0.17]);
+                box(faction, vest, webbingMat, [0.30, 0.014, 0.012], [0, -0.147, -0.17]);
+                box(faction, vest, webbingMat, [0.29, 0.018, 0.016], [0, 0.213, -0.168]);
+                box(faction, vest, webbingMat, [0.29, 0.018, 0.016], [0, 0.012, -0.171]);
                 box(faction, vest, patch, [0.075, 0.035, 0.008], [-0.105, 0.158, -0.173]);
                 box(faction, vest, patch, [0.055, 0.026, 0.008], [0.102, 0.157, -0.173]);
+                box(faction, vest, webbingMat, [0.018, 0.12, 0.012], [-0.086, 0.075, -0.22], [0, 0, -0.18]);
+                box(faction, vest, webbingMat, [0.018, 0.12, 0.012], [0.086, 0.075, -0.22], [0, 0, 0.18]);
+                for (let bolt = 0; bolt < 4; bolt++) {
+                    const y = 0.16 - bolt * 0.065;
+                    sphere(faction, vest, rubberMat, [0.006, 0.006, 0.003], [-0.145, y, -0.207]);
+                    sphere(faction, vest, rubberMat, [0.006, 0.006, 0.003], [0.145, y, -0.207]);
+                }
+                box(faction, vest, webbingMat, [0.085, 0.12, 0.032], [-0.21, -0.07, -0.103], [0, 0, -0.12]);
+                box(faction, vest, webbingMat, [0.085, 0.12, 0.032], [0.21, -0.07, -0.103], [0, 0, 0.12]);
+                box(faction, vest, patch, [0.032, 0.024, 0.008], [-0.212, -0.025, -0.124]);
+                box(faction, vest, patch, [0.032, 0.024, 0.008], [0.212, -0.025, -0.124]);
                 for (let pouch = 0; pouch < 3; pouch++) {
                     const x = (pouch - 1) * 0.092;
                     box(faction, vest, rig, [0.075, 0.085, 0.045], [x, -0.105, -0.17]);
+                    box(faction, vest, pad, [0.073, 0.028, 0.047], [x, -0.061, -0.171]);
                     box(faction, vest, webbingMat, [0.064, 0.012, 0.008], [x, -0.058, -0.195]);
+                    cylinder(faction, vest, rubberMat, 0.007, 0.007, 0.012, [x, -0.071, -0.202], 10).rotation.x = Math.PI / 2;
                 }
                 box(faction, vest, rubberMat, [0.12, 0.07, 0.052], [0.205, -0.01, -0.07], [0, 0, -0.12]);
                 box(faction, vest, patch, [0.036, 0.036, 0.01], [0.205, -0.005, -0.101]);
                 cylinder(faction, vest, webbingMat, 0.026, 0.026, 0.016, [0, -0.018, -0.205], 16).rotation.x = Math.PI / 2;
+                box(faction, vest, patch, [0.064, 0.044, 0.012], [0.008, 0.235, -0.158], [0, 0, -0.06]);
+                for (let web = 0; web < 3; web++) {
+                    box(faction, vest, webbingMat, [0.30, 0.008, 0.012], [0, 0.075 - web * 0.035, -0.174]);
+                }
+                for (let row = 0; row < 3; row++) {
+                    for (let column = 0; column < 5; column++) {
+                        box(faction, vest, webbingMat, [0.008, 0.032, 0.008],
+                            [-0.14 + column * 0.07, 0.125 - row * 0.051, -0.186]);
+                    }
+                }
+                for (let buckle = 0; buckle < 2; buckle++) {
+                    box(faction, vest, patch, [0.018, 0.024, 0.012], [buckle ? 0.16 : -0.16, 0.018, -0.19]);
+                }
+                for (let side = -1; side <= 1; side += 2) {
+                    for (let molle = 0; molle < 4; molle++) {
+                        const y = 0.105 - molle * 0.053;
+                        box(faction, vest, webbingMat, [0.028, 0.008, 0.009], [side * 0.19, y, -0.157]);
+                        box(faction, vest, webbingMat, [0.008, 0.025, 0.009], [side * 0.19, y - 0.014, -0.157]);
+                    }
+                }
+                box(faction, vest, rubberMat, [0.038, 0.09, 0.036], [-0.214, 0.085, 0.00], [0, 0, -0.1]);
+                box(faction, vest, patch, [0.027, 0.031, 0.006], [-0.213, 0.10, -0.021]);
+                for (let radioSlot = 0; radioSlot < 3; radioSlot++) {
+                    box(faction, vest, webbingMat, [0.021, 0.005, 0.008], [-0.213, 0.085 - radioSlot * 0.012, -0.024]);
+                }
+                for (let mag = 0; mag < 3; mag++) {
+                    const x = (mag - 1) * 0.073;
+                    box(faction, vest, rubberMat, [0.046, 0.068, 0.018], [x, 0.00, -0.206]);
+                    box(faction, vest, patch, [0.027, 0.006, 0.004], [x, 0.028, -0.218]);
+                    box(faction, vest, webbingMat, [0.052, 0.009, 0.009], [x, -0.039, -0.217]);
+                }
 
                 [-1, 1].forEach((side) => {
                     const shoulder = side === 1 ? skeletonRig.rightUpperArmSeg : skeletonRig.leftUpperArmSeg;
                     sphere(faction, shoulder, pad, [0.073, 0.058, 0.062], [0, -0.04, 0]);
+                    sphere(faction, shoulder, rig, [0.067, 0.048, 0.034], [side * 0.008, -0.04, -0.037]);
                     box(faction, shoulder, patch, [0.044, 0.031, 0.009], [0, -0.045, -0.063]);
+                    const shoulderTrim = torus(faction, shoulder, rig, 0.047, 0.005, [0, -0.04, -0.031]);
+                    shoulderTrim.scale.set(1.3, 0.86, 0.75);
+                    box(faction, shoulder, webbingMat, [0.060, 0.022, 0.015], [0, -0.045, -0.069]);
+                    for (let stripe = 0; stripe < 3; stripe++) {
+                        box(faction, shoulder, patch, [0.032, 0.004, 0.004], [0, -0.039 - stripe * 0.007, -0.079]);
+                    }
+                    const sleeveBand = torus(faction, shoulder, webbingMat, 0.051, 0.008, [0, -0.095, 0]);
+                    sleeveBand.scale.set(1.08, 0.92, 0.96);
                 });
 
-                sphere(faction, head, rig, [0.097, 0.069, 0.101], [0, 0.075, 0]);
-                box(faction, head, pad, [0.205, 0.018, 0.12], [0, 0.038, -0.018]);
+                sphere(faction, head, rig, [0.091, 0.114, 0.108], [0, 0.005, 0]);
                 [-1, 1].forEach((side) => {
                     cylinder(faction, head, rig, 0.028, 0.028, 0.024, [side * 0.09, 0.008, 0], 20).rotation.z = Math.PI / 2;
-                    sphere(faction, head, rubberMat, [0.031, 0.028, 0.015], [side * 0.047, 0.032, -0.08]);
-                    sphere(faction, head, lens, [0.022, 0.016, 0.008], [side * 0.047, 0.032, -0.093]);
-                    box(faction, head, rubberMat, [0.026, 0.009, 0.012], [side * 0.047, 0.052, -0.09]);
+                    sphere(faction, head, rubberMat, [0.036, 0.03, 0.016], [side * 0.047, 0.04, -0.096]);
+                    sphere(faction, head, lens, [0.028, 0.019, 0.009], [side * 0.047, 0.04, -0.109]);
+                    box(faction, head, rubberMat, [0.034, 0.009, 0.012], [side * 0.047, 0.064, -0.103]);
                 });
                 box(faction, head, scarf, [0.132, 0.071, 0.10], [0, -0.052, -0.028]);
                 box(faction, head, rubberMat, [0.08, 0.012, 0.018], [0, -0.046, -0.082]);
+                const faceGuard = sphere(faction, head, scarf, [0.075, 0.057, 0.049], [0, -0.032, -0.073]);
+                faceGuard.rotation.x = -0.12;
+                box(faction, head, rubberMat, [0.067, 0.012, 0.008], [0, -0.050, -0.119]);
             };
 
-            limbKit('CT', ctUniform, ctRig, armorMat, bootMat, lensMat, patchMat, armorMat);
-            limbKit('T', tUniform, tRig, tanWebbingMat, bootMat, amberLensMat, orangePatchMat, tRig);
+            limbKit('CT', ctUniform, ctRig, armorMat, bootMat, lensMat, ctMarkMat, armorMat);
+            limbKit('T', tUniform, tRig, tanArmorMat, bootMat, amberLensMat, tMarkMat, tanWebbingMat);
 
             [-1, 1].forEach((side) => {
                 const spine = skeletonRig.spine;
@@ -3934,6 +4089,8 @@
             box('T', skeletonRig.spine, tanWebbingMat, [0.055, 0.20, 0.045], [0.12, -0.045, -0.20], [0, 0, 0.18]);
             box('CT', skeletonRig.spine, lensMat, [0.055, 0.035, 0.018], [0, 0.235, -0.035]);
             box('T', skeletonRig.spine, amberLensMat, [0.055, 0.035, 0.018], [0, 0.235, -0.035]);
+            uniformShell('CT', skeletonRig.neck, ctRig, 0.115, [[0.062, 0.064], [0.055, 0.056]], [0, 0.03, 0], 32, 12);
+            uniformShell('T', skeletonRig.neck, tRig, 0.12, [[0.068, 0.069], [0.061, 0.062]], [0, 0.027, 0], 32, 12);
 
             const ctAntenna = cylinder('CT', skeletonRig.spine, rubberMat, 0.003, 0.003, 0.22, [-0.17, 0.20, 0.06], 8);
             ctAntenna.rotation.z = -0.16;
@@ -3943,14 +4100,52 @@
             box('T', skeletonRig.spine, rubberMat, [0.07, 0.016, 0.01], [0.205, 0.067, -0.096]);
 
             const tHead = skeletonRig.head;
+            const helmet = sphere('CT', tHead, ctRig, [0.112, 0.071, 0.116], [0, 0.095, 0.004]);
+            helmet.rotation.x = -0.04;
+            sphere('CT', tHead, armorMat, [0.114, 0.035, 0.044], [0, 0.046, 0.074]);
+            box('CT', tHead, rubberMat, [0.19, 0.018, 0.027], [0, 0.045, 0.012]);
+            box('CT', tHead, ctRig, [0.064, 0.026, 0.012], [0, 0.16, -0.005]);
+            box('CT', tHead, patchMat, [0.035, 0.012, 0.005], [0, 0.164, -0.012]);
+            cylinder('CT', tHead, rubberMat, 0.008, 0.008, 0.10, [-0.09, 0.105, 0.015], 8).rotation.z = -0.18;
+            box('CT', tHead, armorMat, [0.038, 0.073, 0.031], [0.097, 0.012, 0.005]);
+            cylinder('CT', tHead, armorMat, 0.011, 0.011, 0.052, [0.097, 0.012, -0.006], 12).rotation.z = Math.PI / 2;
+            sphere('T', tHead, tRig, [0.108, 0.122, 0.112], [0, 0.012, 0.002]);
             sphere('T', tHead, tRig, [0.105, 0.055, 0.105], [0, 0.078, 0.004]);
-            box('T', tHead, tRig, [0.21, 0.012, 0.075], [0, 0.043, -0.043]);
-            box('CT', tHead, rubberMat, [0.09, 0.025, 0.035], [0, 0.13, -0.079]);
-            box('CT', tHead, lensMat, [0.025, 0.052, 0.026], [-0.035, 0.13, -0.10], [-0.32, 0, -0.16]);
-            box('CT', tHead, lensMat, [0.025, 0.052, 0.026], [0.035, 0.13, -0.10], [-0.32, 0, 0.16]);
-            box('CT', tHead, rubberMat, [0.14, 0.012, 0.018], [0, 0.103, -0.096]);
-            sphere('T', tHead, amberLensMat, [0.057, 0.018, 0.012], [0, 0.035, -0.094]);
-            box('T', tHead, tRig, [0.14, 0.018, 0.012], [0, 0.052, -0.092]);
+            sphere('T', tHead, tRig, [0.114, 0.022, 0.116], [0, 0.037, 0.005]);
+            box('CT', tHead, rubberMat, [0.09, 0.025, 0.035], [0, 0.025, -0.092]);
+            sphere('CT', tHead, lensMat, [0.031, 0.020, 0.010], [-0.036, 0.026, -0.119]);
+            sphere('CT', tHead, lensMat, [0.031, 0.020, 0.010], [0.036, 0.026, -0.119]);
+            box('CT', tHead, rubberMat, [0.14, 0.012, 0.018], [0, 0.005, -0.113]);
+            cylinder('CT', tHead, rubberMat, 0.004, 0.004, 0.17, [0, 0.026, 0.025], 8).rotation.y = Math.PI / 2;
+            sphere('T', tHead, amberLensMat, [0.032, 0.021, 0.010], [-0.036, 0.036, -0.12]);
+            sphere('T', tHead, amberLensMat, [0.032, 0.021, 0.010], [0.036, 0.036, -0.12]);
+            box('T', tHead, rubberMat, [0.014, 0.012, 0.018], [0, 0.038, -0.119]);
+            box('T', tHead, tRig, [0.14, 0.018, 0.012], [0, 0.052, -0.117]);
+            box('T', tHead, tRig, [0.22, 0.014, 0.10], [0, 0.067, 0.042]);
+            box('T', tHead, orangePatchMat, [0.048, 0.009, 0.006], [0.035, 0.073, -0.132]);
+            const tWrap = torus('T', tHead, orangePatchMat, 0.085, 0.009, [0, 0.035, 0.005], [Math.PI / 2, 0, 0]);
+            tWrap.scale.set(1.04, 1.0, 0.82);
+            const ctHelmetRim = torus('CT', tHead, rubberMat, 0.101, 0.007, [0, 0.048, 0.004], [Math.PI / 2, 0, 0]);
+            ctHelmetRim.scale.set(1.0, 1.0, 0.89);
+            box('CT', tHead, armorMat, [0.105, 0.012, 0.018], [0, 0.166, -0.012]);
+            box('CT', tHead, patchMat, [0.04, 0.021, 0.008], [0.068, 0.12, -0.105]);
+            box('T', tHead, orangePatchMat, [0.04, 0.021, 0.008], [-0.068, 0.12, -0.105]);
+
+            const ctRadioCable = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(-0.09, 0.24, 0.045),
+                new THREE.Vector3(-0.14, 0.20, 0.055),
+                new THREE.Vector3(-0.17, 0.12, 0.045),
+                new THREE.Vector3(-0.18, 0.035, -0.04)
+            ]);
+            add('CT', skeletonRig.spine, new THREE.TubeGeometry(ctRadioCable, 20, 0.006, 7, false), rubberMat, [0, 0, 0]);
+            const tRadioCable = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0.09, 0.20, 0.055),
+                new THREE.Vector3(0.15, 0.16, 0.06),
+                new THREE.Vector3(0.17, 0.09, 0.03),
+                new THREE.Vector3(0.18, 0.01, -0.05)
+            ]);
+            add('T', skeletonRig.spine, new THREE.TubeGeometry(tRadioCable, 20, 0.006, 7, false), rubberMat, [0, 0, 0]);
+            updateFactionCoverage();
         }
 
         function toggleFaction() {
@@ -3964,6 +4159,15 @@
             button.classList.toggle('text-cyan-200', state.faction === 'CT');
             button.classList.toggle('text-amber-200', state.faction === 'T');
             document.getElementById('active-mode-label').textContent = `${state.faction} Taktik Operatörü`;
+        }
+
+        function updateFactionCoverage() {
+            const showBaseAnatomy = state.skinMode !== 'GLOVED';
+            skinMeshes.forEach((mesh) => { mesh.visible = showBaseAnatomy; });
+            if (skeletonRig.head?.userData.faceCore) {
+                skeletonRig.head.userData.faceCore.visible = showBaseAnatomy;
+                skeletonRig.head.userData.hairCap.visible = showBaseAnatomy;
+            }
         }
 
         // === DEVAM PARÇA 1/5'İN DOĞRUDAN DEVAMI (PARÇA 2/5) ===
@@ -4703,6 +4907,7 @@
             skinMeshes.forEach(m => m.material = bodyMat);
             gloveMeshes.forEach(m => m.visible = (mode === 'GLOVED'));
             clothesMeshes.forEach(m => m.visible = (mode !== 'ECORCHE'));
+            updateFactionCoverage();
         }
 
         function setWeaponSkinTheme(theme) {
