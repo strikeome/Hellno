@@ -958,6 +958,14 @@
             for (let index = 1; index < previousFrame.length; index++) {
                 values.push(THREE.MathUtils.lerp(previousFrame[index] || 0, nextFrame[index] || 0, blend));
             }
+            if (isKnifeType(type)) {
+                const gripIn = THREE.MathUtils.smootherstep(clampedProgress, 0, 0.12);
+                const gripOut = 1 - THREE.MathUtils.smootherstep(clampedProgress, 0.88, 1);
+                values[5] = THREE.MathUtils.lerp(1, values[5], gripIn * gripOut);
+                if (['BAYONET', 'TALON', 'BOWIE', 'HUNTSMAN'].includes(type)) {
+                    values[3] = THREE.MathUtils.lerp(values[3], 0, 1 - gripOut);
+                }
+            }
             return { profile, rotX: values[0], rotY: values[1], rotZ: values[2], spin: values[3], flip: values[4], grip: values[5] };
         }
 
@@ -2087,54 +2095,81 @@
             // CS2 Yüksek Metalik Silah & Bıçak Materyalleri (EnvMap Destekli)
             sharedMaterials.gunMetal = new THREE.MeshStandardMaterial({
                 color: 0x1e2430,
-                roughness: 0.20,
-                metalness: 0.94,
-                bumpMap: gloveTex,
-                bumpScale: 0.002,
+                roughness: 0.29,
+                metalness: 0.88,
+                bumpMap: surfaceDetails.brushedSteelBump,
+                bumpScale: 0.003,
                 envMap: metallicEnvCubeMap,
-                envMapIntensity: 1.35
+                envMapIntensity: 1.05
             });
             sharedMaterials.gunFDE = new THREE.MeshStandardMaterial({
                 map: gunAnimeTex,
                 color: 0xffffff,
-                roughness: 0.14,
-                metalness: 0.86,
+                roughness: 0.28,
+                metalness: 0.62,
+                bumpMap: surfaceDetails.brushedSteelBump,
+                bumpScale: 0.0015,
                 envMap: metallicEnvCubeMap,
-                envMapIntensity: 1.45
+                envMapIntensity: 1.05
             });
             sharedMaterials.gunAccentNeon = new THREE.MeshStandardMaterial({
                 color: 0xf59e0b,
                 emissive: 0xf59e0b,
-                emissiveIntensity: 0.28,
-                roughness: 0.14,
-                metalness: 0.92,
+                emissiveIntensity: 0.10,
+                roughness: 0.25,
+                metalness: 0.78,
                 envMap: metallicEnvCubeMap,
-                envMapIntensity: 1.5
+                envMapIntensity: 1.0
             });
             sharedMaterials.gunCyberCyan = new THREE.MeshStandardMaterial({
                 color: 0xec4899,
                 emissive: 0xec4899,
-                emissiveIntensity: 0.28,
-                roughness: 0.14,
-                metalness: 0.92,
+                emissiveIntensity: 0.10,
+                roughness: 0.25,
+                metalness: 0.78,
                 envMap: metallicEnvCubeMap,
-                envMapIntensity: 1.5
+                envMapIntensity: 1.0
             });
             sharedMaterials.gunBarrelSteel = new THREE.MeshStandardMaterial({
                 color: 0x94a3b8,
-                roughness: 0.12,
+                roughness: 0.22,
                 metalness: 0.98,
+                bumpMap: surfaceDetails.brushedSteelBump,
+                bumpScale: 0.002,
                 envMap: metallicEnvCubeMap,
-                envMapIntensity: 1.65
+                envMapIntensity: 1.2
             });
             sharedMaterials.gunPolymer = new THREE.MeshStandardMaterial({
                 color: 0x11141d,
-                roughness: 0.44,
-                metalness: 0.35,
-                bumpMap: gloveTex,
-                bumpScale: 0.006,
+                roughness: 0.66,
+                metalness: 0.06,
+                bumpMap: surfaceDetails.polymerBump,
+                bumpScale: 0.014,
                 envMap: metallicEnvCubeMap,
-                envMapIntensity: 0.5
+                envMapIntensity: 0.28
+            });
+            sharedMaterials.weaponWood = new THREE.MeshStandardMaterial({
+                map: surfaceDetails.woodAlbedo,
+                bumpMap: surfaceDetails.woodBump,
+                bumpScale: 0.018,
+                color: 0xffffff,
+                roughness: 0.68,
+                metalness: 0.025
+            });
+            sharedMaterials.weaponDarkWood = new THREE.MeshStandardMaterial({
+                map: surfaceDetails.woodAlbedo,
+                bumpMap: surfaceDetails.woodBump,
+                bumpScale: 0.018,
+                color: 0x73513a,
+                roughness: 0.72,
+                metalness: 0.015
+            });
+            sharedMaterials.awpStock = new THREE.MeshStandardMaterial({
+                color: 0x365b49,
+                roughness: 0.64,
+                metalness: 0.035,
+                bumpMap: surfaceDetails.polymerBump,
+                bumpScale: 0.016
             });
             sharedMaterials.brass = new THREE.MeshStandardMaterial({
                 color: 0xfbbf24,
@@ -2146,47 +2181,49 @@
             sharedMaterials.bayonetBlade = new THREE.MeshStandardMaterial({
                 map: damascusTex,
                 color: 0xffffff,
-                roughness: 0.07,
-                metalness: 0.98,
-                bumpMap: damascusTex,
+                roughness: 0.14,
+                metalness: 0.94,
+                bumpMap: surfaceDetails.brushedSteelBump,
                 bumpScale: 0.002,
                 envMap: metallicEnvCubeMap,
-                envMapIntensity: 1.85
+                envMapIntensity: 1.4
             });
             sharedMaterials.bayonetEdge = new THREE.MeshStandardMaterial({
                 color: 0xffffff,
-                roughness: 0.04,
+                roughness: 0.11,
                 metalness: 1.0,
+                bumpMap: surfaceDetails.brushedSteelBump,
+                bumpScale: 0.001,
                 envMap: metallicEnvCubeMap,
-                envMapIntensity: 2.2
+                envMapIntensity: 1.45
             });
             sharedMaterials.damascusBlade = new THREE.MeshStandardMaterial({
                 map: damascusTex,
                 color: 0xffffff,
-                roughness: 0.06,
-                metalness: 0.99,
-                bumpMap: damascusTex,
+                roughness: 0.15,
+                metalness: 0.94,
+                bumpMap: surfaceDetails.brushedSteelBump,
                 bumpScale: 0.0025,
                 envMap: metallicEnvCubeMap,
-                envMapIntensity: 1.95
+                envMapIntensity: 1.45
             });
             sharedMaterials.knifeGrip = new THREE.MeshStandardMaterial({
                 color: 0x171923,
-                roughness: 0.42,
-                metalness: 0.35,
-                bumpMap: gloveTex,
-                bumpScale: 0.009,
+                roughness: 0.60,
+                metalness: 0.12,
+                bumpMap: surfaceDetails.polymerBump,
+                bumpScale: 0.016,
                 envMap: metallicEnvCubeMap,
-                envMapIntensity: 0.6
+                envMapIntensity: 0.38
             });
             sharedMaterials.karambitGrip = new THREE.MeshStandardMaterial({
                 color: 0x1e1b2e,
-                roughness: 0.30,
-                metalness: 0.55,
-                bumpMap: gloveTex,
-                bumpScale: 0.007,
+                roughness: 0.50,
+                metalness: 0.18,
+                bumpMap: surfaceDetails.polymerBump,
+                bumpScale: 0.013,
                 envMap: metallicEnvCubeMap,
-                envMapIntensity: 0.85
+                envMapIntensity: 0.52
             });
         }
 
@@ -2895,9 +2932,20 @@
             gunCore.add(handguard);
 
             [-1, 1].forEach(side => {
-                const sideRail = new THREE.Mesh(new THREE.BoxGeometry(0.0045, 0.0065, 0.255), sharedMaterials.gunCyberCyan);
+                const sideRail = new THREE.Mesh(new THREE.BoxGeometry(0.0045, 0.0065, 0.255), sharedMaterials.gunMetal);
                 sideRail.position.set(side * 0.0265, 0.032, 0.235);
                 gunCore.add(sideRail);
+                for (let slot = 0; slot < 5; slot++) {
+                    const mlokSlot = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.008, 0.026), sharedMaterials.gunPolymer);
+                    mlokSlot.position.set(side * 0.0292, 0.032, 0.145 + slot * 0.045);
+                    gunCore.add(mlokSlot);
+                }
+                for (let pin = 0; pin < 3; pin++) {
+                    const receiverPin = new THREE.Mesh(new THREE.CylinderGeometry(0.0038, 0.0038, 0.003, 10), sharedMaterials.bayonetEdge);
+                    receiverPin.rotation.z = Math.PI / 2;
+                    receiverPin.position.set(side * 0.024, 0.012, -0.052 + pin * 0.054);
+                    gunCore.add(receiverPin);
+                }
             });
 
             const afgGrip = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.024, 0.085), sharedMaterials.gunPolymer);
@@ -2986,8 +3034,8 @@
             core.rotation.y = Math.PI;
             gun.add(core);
 
-            const wood = new THREE.MeshStandardMaterial({ color: 0x8b451f, roughness: 0.62, metalness: 0.02 });
-            const darkWood = new THREE.MeshStandardMaterial({ color: 0x5b301d, roughness: 0.68, metalness: 0.02 });
+            const wood = sharedMaterials.weaponWood;
+            const darkWood = sharedMaterials.weaponDarkWood;
             const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.060, 0.275), sharedMaterials.gunFDE);
             receiver.position.set(0, 0.030, 0.015);
             core.add(receiver);
@@ -3029,6 +3077,22 @@
             const rearSight = new THREE.Mesh(new THREE.BoxGeometry(0.030, 0.028, 0.022), sharedMaterials.gunMetal);
             rearSight.position.set(0, 0.076, -0.065);
             core.add(rearSight);
+            for (let side = -1; side <= 1; side += 2) {
+                for (let rivet = 0; rivet < 3; rivet++) {
+                    const receiverRivet = new THREE.Mesh(new THREE.CylinderGeometry(0.0045, 0.0045, 0.004, 10), sharedMaterials.bayonetEdge);
+                    receiverRivet.rotation.z = Math.PI / 2;
+                    receiverRivet.position.set(side * 0.0275, 0.031, -0.055 + rivet * 0.058);
+                    core.add(receiverRivet);
+                }
+                const selectorPivot = new THREE.Mesh(new THREE.CylinderGeometry(0.010, 0.010, 0.006, 16), sharedMaterials.gunMetal);
+                selectorPivot.rotation.z = Math.PI / 2;
+                selectorPivot.position.set(side * 0.028, -0.020, -0.062);
+                core.add(selectorPivot);
+                const selectorLever = new THREE.Mesh(new THREE.BoxGeometry(0.040, 0.008, 0.014), sharedMaterials.gunMetal);
+                selectorLever.position.set(side * 0.043, -0.026, -0.055);
+                selectorLever.rotation.y = side * 0.22;
+                core.add(selectorLever);
+            }
             const pistolGrip = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.120, 0.052), darkWood);
             pistolGrip.position.set(0, -0.083, -0.085);
             pistolGrip.rotation.x = -0.20;
@@ -3226,7 +3290,7 @@
             const core = new THREE.Group();
             core.rotation.y = Math.PI;
             gun.add(core);
-            const stockMaterial = new THREE.MeshStandardMaterial({ color: 0x25634f, roughness: 0.48, metalness: 0.06 });
+            const stockMaterial = sharedMaterials.awpStock;
 
             const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.064, 0.074, 0.38), sharedMaterials.gunFDE);
             receiver.position.set(0, 0.034, 0.07);
@@ -3283,6 +3347,23 @@
             objective.rotation.x = Math.PI / 2;
             objective.position.set(0, 0.124, 0.18);
             core.add(objective);
+            const elevationTurret = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.028, 20), sharedMaterials.gunMetal);
+            elevationTurret.position.set(0, 0.157, 0.04);
+            core.add(elevationTurret);
+            const elevationCap = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.006, 20), sharedMaterials.gunAccentNeon);
+            elevationCap.position.set(0, 0.174, 0.04);
+            core.add(elevationCap);
+            const windageTurret = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.026, 18), sharedMaterials.gunMetal);
+            windageTurret.rotation.z = Math.PI / 2;
+            windageTurret.position.set(0.047, 0.124, 0.04);
+            core.add(windageTurret);
+            for (let mark = 0; mark < 8; mark++) {
+                const dialMark = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.006, 0.002), sharedMaterials.bayonetEdge);
+                const angle = mark * Math.PI / 4;
+                dialMark.position.set(Math.cos(angle) * 0.011, 0.004, Math.sin(angle) * 0.011);
+                dialMark.rotation.y = angle;
+                elevationCap.add(dialMark);
+            }
 
             const triggerGuard = new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.004, 8, 18, Math.PI), sharedMaterials.gunMetal);
             triggerGuard.rotation.y = Math.PI / 2;
@@ -3375,6 +3456,18 @@
             const rearSight = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.018, 0.014), sharedMaterials.gunMetal);
             rearSight.position.set(0, 0.068, -0.083);
             core.add(rearSight);
+            for (let side = -1; side <= 1; side += 2) {
+                for (let serration = 0; serration < 7; serration++) {
+                    const slideSerration = new THREE.Mesh(new THREE.BoxGeometry(0.0025, 0.026, 0.0045), sharedMaterials.gunMetal);
+                    slideSerration.position.set(side * 0.0265, 0.038, -0.065 + serration * 0.019);
+                    slideSerration.rotation.x = -0.12;
+                    core.add(slideSerration);
+                }
+                const gripScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.0055, 0.005, 12), sharedMaterials.bayonetEdge);
+                gripScrew.rotation.z = Math.PI / 2;
+                gripScrew.position.set(side * 0.024, -0.084, -0.066);
+                core.add(gripScrew);
+            }
             const guard = new THREE.Mesh(new THREE.TorusGeometry(0.027, 0.004, 8, 20, Math.PI), sharedMaterials.gunMetal);
             guard.rotation.y = Math.PI / 2;
             guard.position.set(0, -0.036, -0.035);
@@ -4802,7 +4895,7 @@
             const root = indexFinger.mcpJoint.position;
             const press = THREE.MathUtils.clamp(triggerPull, 0, 1);
             const dx = triggerTarget.x - root.x;
-            const dy = triggerTarget.y - root.y - press * 0.002;
+            const dy = triggerTarget.y - root.y - press * 0.006;
             const dz = triggerTarget.z - root.z;
             const firstLength = 0.033;
             const distalLength = 0.025 + 0.019;
@@ -4828,9 +4921,9 @@
             const elbowFlex = Math.PI - Math.acos(elbowCos);
             const fingerSpread = THREE.MathUtils.clamp(-Math.atan2(dx, dy), -1.35, 1.35);
 
-            indexFinger.mcpJoint.rotation.set(shoulderFlex + press * 0.05, 0, fingerSpread);
-            indexFinger.pipJoint.rotation.set(elbowFlex * 0.72 + press * 0.10, 0, 0);
-            indexFinger.dipJoint.rotation.set(elbowFlex * 0.28 + press * 0.12, 0, 0);
+            indexFinger.mcpJoint.rotation.set(shoulderFlex + press * 0.12, 0, fingerSpread);
+            indexFinger.pipJoint.rotation.set(elbowFlex * 0.72 + press * 0.20, 0, 0);
+            indexFinger.dipJoint.rotation.set(elbowFlex * 0.28 + press * 0.13, 0, 0);
         }
 
         function poseHandForWeapon(handGroup, side, role, triggerPull = 0, triggerTarget = null) {
@@ -4838,6 +4931,7 @@
           const thumbBase = handGroup.userData.thumbBase;
           const thumbDistal = handGroup.userData.thumbDistal;
           if (!f || !thumbBase) return;
+          thumbBase.position.z = side < 0 ? -0.012 : 0.008;
           
           if (role === 'RIGHT_RIFLE') {
                         thumbBase.rotation.set(0.52, -side * 0.18, side * 0.48);
@@ -4855,19 +4949,22 @@
             });
                     } else if (role === 'RIGHT_INSPECT') {
                         const grip = THREE.MathUtils.clamp(triggerPull, 0, 1);
-                        thumbBase.rotation.set(0.46 + grip * 0.22, -side * 0.18, side * 0.36);
-                        thumbDistal.rotation.set(0.30 + grip * 0.28, 0, 0);
-                        f.index.mcpJoint.rotation.set(0.24 + grip * 0.52, 0, -0.08);
-                        f.index.pipJoint.rotation.set(0.54 + grip * 0.46, 0, 0);
-                        f.index.dipJoint.rotation.set(0.34 + grip * 0.22, 0, 0);
+                        thumbBase.rotation.set(0.52 + grip * 0.14, -side * 0.18, side * (0.48 - grip * 0.16));
+                        thumbDistal.rotation.set(0.42 + grip * 0.16, 0, 0);
+                        if (triggerTarget) poseIndexFingerOnTrigger(handGroup, triggerTarget, 0);
+                        else {
+                            f.index.mcpJoint.rotation.set(0.32, 0, -0.06);
+                            f.index.pipJoint.rotation.set(0.54, 0, 0);
+                            f.index.dipJoint.rotation.set(0.28, 0, 0);
+                        }
                         ['middle', 'ring', 'pinky'].forEach((name, idx) => {
-                            f[name].mcpJoint.rotation.set(1.18 + grip * 0.22 + idx * 0.04, 0, 0);
-                            f[name].pipJoint.rotation.set(1.32 + grip * 0.18, 0, 0);
-                            f[name].dipJoint.rotation.set(0.92 + grip * 0.12, 0, 0);
+                            f[name].mcpJoint.rotation.set(1.42 + idx * 0.05 - grip * 0.24, 0, 0);
+                            f[name].pipJoint.rotation.set(1.52 - grip * 0.20, 0, 0);
+                            f[name].dipJoint.rotation.set(1.10 - grip * 0.18, 0, 0);
                         });
           } else if (role === 'LEFT_CCLAMP') {
-            thumbBase.rotation.set(0.35, -side * 0.25, side * 0.32);
-            thumbDistal.rotation.set(0.28, 0, 0);
+                        thumbBase.rotation.set(0.52, -side * 0.08, side * 0.60);
+                        thumbDistal.rotation.set(0.46, 0, 0);
             
             ['index', 'middle', 'ring', 'pinky'].forEach((name, idx) => {
               f[name].mcpJoint.rotation.set(1.28 + idx * 0.04, 0, 0);
@@ -4876,17 +4973,17 @@
             });
                     } else if (role === 'LEFT_INSPECT') {
                         const grip = THREE.MathUtils.clamp(triggerPull, 0, 1);
-                        thumbBase.rotation.set(0.30 + grip * 0.32, -side * 0.15, side * 0.24);
-                        thumbDistal.rotation.set(0.20 + grip * 0.35, 0, 0);
+                        thumbBase.rotation.set(0.52 + grip * 0.18, -side * 0.08, side * (0.60 - grip * 0.18));
+                        thumbDistal.rotation.set(0.46 + grip * 0.22, 0, 0);
                         ['index', 'middle', 'ring', 'pinky'].forEach((name, idx) => {
-                            f[name].mcpJoint.rotation.set(0.32 + grip * 0.88 + idx * 0.025, 0, 0);
-                            f[name].pipJoint.rotation.set(0.52 + grip * 0.78, 0, 0);
-                            f[name].dipJoint.rotation.set(0.30 + grip * 0.58, 0, 0);
+                            f[name].mcpJoint.rotation.set(1.28 + idx * 0.04 - grip * 0.62, 0, 0);
+                            f[name].pipJoint.rotation.set(1.35 - grip * 0.60, 0, 0);
+                            f[name].dipJoint.rotation.set(0.92 - grip * 0.46, 0, 0);
                         });
                     } else if (role === 'LEFT_RELOAD') {
                         const grip = THREE.MathUtils.clamp(triggerPull, 0, 1);
-                        thumbBase.rotation.set(0.20 + grip * 0.42, -side * 0.14, side * 0.24);
-                        thumbDistal.rotation.set(0.12 + grip * 0.38, 0, 0);
+                        thumbBase.rotation.set(0.32 + grip * 0.32, -side * 0.02, side * 0.55 - grip * 0.12);
+                        thumbDistal.rotation.set(0.28 + grip * 0.28, 0, 0);
                         ['index', 'middle', 'ring', 'pinky'].forEach((name, idx) => {
                             f[name].mcpJoint.rotation.set(0.16 + grip * 1.04 + idx * 0.025, 0, 0);
                             f[name].pipJoint.rotation.set(0.24 + grip * 1.10, 0, 0);
@@ -4908,7 +5005,7 @@
             });
           } else if (role === 'RIGHT_KARAMBIT_INSPECT') {
                         const catchGrip = THREE.MathUtils.clamp(triggerPull, 0, 1);
-                        thumbBase.rotation.set(0.34 + catchGrip * 0.08, -0.18, 0.28 + catchGrip * 0.20);
+                        thumbBase.rotation.set(0.26 + catchGrip * 0.16, -0.18, 0.28 + catchGrip * 0.20);
                         thumbDistal.rotation.set(0.20 + catchGrip * 0.15, 0, 0);
 
                         f.index.mcpJoint.rotation.set(0.68 + catchGrip * 0.54, 0, 0.06);
@@ -4929,10 +5026,23 @@
                             f[name].pipJoint.rotation.set(1.52 + inspectGrip * 0.18, 0, 0);
                             f[name].dipJoint.rotation.set(1.15 + inspectGrip * 0.12, 0, 0);
             });
+          } else if (role === 'RIGHT_KNIFE_INSPECT') {
+                        const grip = THREE.MathUtils.clamp(triggerPull, 0, 1);
+                        const release = 1 - grip;
+                        thumbBase.rotation.set(0.68 - release * 0.34, -side * (0.20 - release * 0.08), side * (0.58 - release * 0.28));
+                        thumbDistal.rotation.set(0.45 - release * 0.22, 0, 0);
+                        f.index.mcpJoint.rotation.set(1.42 - release * 0.78, 0, -0.06);
+                        f.index.pipJoint.rotation.set(1.52 - release * 0.90, 0, 0);
+                        f.index.dipJoint.rotation.set(1.15 - release * 0.62, 0, 0);
+                        ['middle', 'ring', 'pinky'].forEach((name, idx) => {
+                            f[name].mcpJoint.rotation.set(1.42 + idx * 0.05 - release * 0.92, 0, 0);
+                            f[name].pipJoint.rotation.set(1.52 - release * 0.96, 0, 0);
+                            f[name].dipJoint.rotation.set(1.15 - release * 0.68, 0, 0);
+                        });
           } else if (role === 'LEFT_KNIFE_GUARD') {
                         const inspectGrip = THREE.MathUtils.clamp(triggerPull, 0, 1);
-                        thumbBase.rotation.set(0.28 + inspectGrip * 0.18, 0.22, -0.38 + inspectGrip * 0.12);
-                        thumbDistal.rotation.set(0.24 + inspectGrip * 0.20, 0, 0);
+                        thumbBase.rotation.set(0.46 + inspectGrip * 0.16, 0.02, -0.62 + inspectGrip * 0.18);
+                        thumbDistal.rotation.set(0.42 + inspectGrip * 0.22, 0, 0);
             
             const guardAngles = [
                             { name: 'index', mcp: 0.36, pip: 0.62, dip: 0.40, spread: 0.10 },
@@ -4945,6 +5055,23 @@
                             f[ga.name].pipJoint.rotation.set(ga.pip + inspectGrip * 0.20, 0, 0);
                             f[ga.name].dipJoint.rotation.set(ga.dip + inspectGrip * 0.12, 0, 0);
             });
+                    } else if (role === 'LEFT_KNIFE_INSPECT') {
+                                                const grip = THREE.MathUtils.clamp(triggerPull, 0, 1);
+                                        const release = 1 - grip;
+                                        thumbBase.rotation.set(0.46 + release * 0.18, 0.02, -0.62 - release * 0.12);
+                                        thumbDistal.rotation.set(0.42 + release * 0.22, 0, 0);
+                                        f.index.mcpJoint.rotation.set(0.36 - release * 0.16, 0, 0.10);
+                                        f.index.pipJoint.rotation.set(0.62 - release * 0.28, 0, 0);
+                                        f.index.dipJoint.rotation.set(0.40 - release * 0.18, 0, 0);
+                                                ['middle', 'ring', 'pinky'].forEach((name, idx) => {
+                                            const restMcp = [0.44, 0.52, 0.60][idx];
+                                            const restPip = [0.68, 0.74, 0.80][idx];
+                                            const restDip = [0.44, 0.48, 0.52][idx];
+                                            const spread = [0.02, -0.06, -0.14][idx];
+                                            f[name].mcpJoint.rotation.set(restMcp - release * 0.18, 0, spread);
+                                            f[name].pipJoint.rotation.set(restPip - release * 0.24, 0, 0);
+                                            f[name].dipJoint.rotation.set(restDip - release * 0.16, 0, 0);
+                                                });
           }
         }
         
@@ -5093,6 +5220,9 @@
           }
           
                     const activeWeapon = getActiveWeaponModel();
+                    const inspectBaseQuaternion = activeWeapon.userData.inspectBaseQuaternion ||
+                        (activeWeapon.userData.inspectBaseQuaternion = activeWeapon.quaternion.clone());
+                    activeWeapon.quaternion.copy(inspectBaseQuaternion);
           
           let inspectPose = null;
           if (state.weaponInspectTimer > 0) {
@@ -5134,16 +5264,17 @@
                         if (activeWeapon.userData.butterflyPivots) {
                             activeWeapon.userData.butterflyPivots.forEach(pivot => pivot.rotation.set(0, 0, 0));
                         }
-                        if (inspectPose.spin && activeWeapon.userData.bladeRig) {
-              const axis = new THREE.Vector3(...inspectPose.profile.axis);
-              const spinQuaternion = new THREE.Quaternion().setFromAxisAngle(axis, inspectPose.spin);
-              activeWeapon.userData.bladeRig.quaternion.copy(activeWeapon.userData.baseBladeQuat).multiply(spinQuaternion);
+                        if (isKnife && inspectPose.spin) {
+                            const axis = new THREE.Vector3(...inspectPose.profile.axis);
+                            const spinQuaternion = new THREE.Quaternion().setFromAxisAngle(axis, inspectPose.spin);
+                            activeWeapon.quaternion.copy(inspectBaseQuaternion).multiply(spinQuaternion);
             }
             if (inspectPose.flip && activeWeapon.userData.butterflyPivots) {
               activeWeapon.userData.butterflyPivots[0].rotation.z = inspectPose.flip;
               activeWeapon.userData.butterflyPivots[1].rotation.z = -inspectPose.flip;
             }
           }
+                                        const knifeInspect = Boolean(inspectPose && isKnife);
                     if (state.weaponInspectTimer <= 0) {
                         ['bayonet', 'karambit', 'butterfly', 'talon'].forEach(name => {
                             const weapon = skeletonRig[name];
@@ -5322,27 +5453,40 @@
                             const armWorldQuat = skeletonRig.armsContainer.getWorldQuaternion(new THREE.Quaternion()).invert();
                             const pouchGripQuat = armWorldQuat.multiply(pouchWorldQuat)
                                 .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.28, 0, 0)));
-                            const removeMag = THREE.MathUtils.smoothstep(progress, 0.10, 0.21) * (1 - THREE.MathUtils.smoothstep(progress, 0.34, 0.43));
-                            const reachPouch = THREE.MathUtils.smoothstep(progress, 0.38, 0.50) * (1 - THREE.MathUtils.smoothstep(progress, 0.64, 0.73));
-                            const insertMag = THREE.MathUtils.smoothstep(progress, 0.72, 0.81) * (1 - THREE.MathUtils.smoothstep(progress, 0.90, 0.96));
+                            const removeMag = THREE.MathUtils.smoothstep(progress, 0.08, 0.19);
+                            const reachPouch = THREE.MathUtils.smoothstep(progress, 0.42, 0.55);
+                            const insertMag = THREE.MathUtils.smoothstep(progress, 0.68, 0.80);
                             const returnToForegrip = THREE.MathUtils.smoothstep(progress, 0.91, 0.99);
                             const spareHomeParent = spareMag.userData.reloadHomeParent || spareMag.parent;
                             const normalGripQuat = leftGripQuat.clone();
                             spareHomeParent.updateMatrixWorld(true);
                             const magazineWellTarget = spareHomeParent.localToWorld(spareMag.userData.reloadHome.clone())
                                 .applyMatrix4(invArmMatrix)
-                                .add(new THREE.Vector3(0, 0.075, 0.025));
-                            leftGripPos.lerp(oldMagazineTarget, removeMag);
-                            leftGripPos.lerp(pouchTarget, reachPouch);
-                            leftGripPos.lerp(magazineWellTarget, insertMag);
-                            leftGripPos.lerp(normalGripPos, returnToForegrip);
-                            leftGripQuat.slerp(pouchGripQuat, reachPouch);
-                            leftGripQuat.slerp(normalGripQuat, insertMag);
-                            leftGripQuat.slerp(normalGripQuat, returnToForegrip);
+                                .add(new THREE.Vector3(0, 0.068, 0.052));
+
+                            if (progress < 0.42) {
+                                leftGripPos.lerpVectors(normalGripPos, oldMagazineTarget, removeMag);
+                                leftGripQuat.copy(normalGripQuat);
+                            } else if (progress < 0.55) {
+                                leftGripPos.lerpVectors(oldMagazineTarget, pouchTarget, reachPouch);
+                                leftGripQuat.slerpQuaternions(normalGripQuat, pouchGripQuat, reachPouch);
+                            } else if (progress < 0.68) {
+                                leftGripPos.copy(pouchTarget);
+                                leftGripQuat.copy(pouchGripQuat);
+                            } else if (progress < 0.80) {
+                                leftGripPos.lerpVectors(pouchTarget, magazineWellTarget, insertMag);
+                                leftGripQuat.slerpQuaternions(pouchGripQuat, normalGripQuat, insertMag);
+                            } else if (progress < 0.91) {
+                                leftGripPos.copy(magazineWellTarget);
+                                leftGripQuat.copy(normalGripQuat);
+                            } else {
+                                leftGripPos.lerpVectors(magazineWellTarget, normalGripPos, returnToForegrip);
+                                leftGripQuat.copy(normalGripQuat);
+                            }
                         }
           }
           
-          if (isKnife) {
+                    if (isKnife && !knifeInspect) {
             const guardX = isPortrait ? -0.098 : -0.138;
             const guardY = isPortrait ? 0.018 : 0.026;
             const guardZ = isPortrait ? -0.335 : -0.305;
@@ -5395,24 +5539,30 @@
           const inspectGrip = inspectPose ? inspectPose.grip : 0;
           const firearmInspect = Boolean(inspectPose && !isKnife);
           const karambitInspect = Boolean(inspectPose && state.equipped === 'KARAMBIT');
-          const knifeInspect = Boolean(inspectPose && isKnife);
-          const activeRightHandRole = firearmInspect ? 'RIGHT_INSPECT' : (karambitInspect ? 'RIGHT_KARAMBIT_INSPECT' : rightHandRole);
-          const rightHandGrip = knifeInspect ? inspectGrip : (firearmInspect ? inspectGrip : state.recoilKick);
+                    const activeRightHandRole = firearmInspect ? 'RIGHT_INSPECT' : (knifeInspect
+                        ? (karambitInspect ? 'RIGHT_KARAMBIT_INSPECT' : 'RIGHT_KNIFE_INSPECT')
+                        : rightHandRole);
+          const fireCycleDuration = Math.max(0.001, rifleData.fireCycleDuration || 0.16);
+          const fireCycleProgress = 1 - THREE.MathUtils.clamp(state.weaponCycleTimer / fireCycleDuration, 0, 1);
+          const triggerPress = state.weaponCycleTimer > 0 ? Math.sin(fireCycleProgress * Math.PI) : 0;
+          const rightHandGrip = knifeInspect || firearmInspect ? inspectGrip : triggerPress;
           poseHandForWeapon(skeletonRig.rightHand, 1, activeRightHandRole, rightHandGrip, rightTriggerTarget);
           const reloadProgress = THREE.MathUtils.clamp(state.reloadProgress, 0, 1);
             const removeGrip = THREE.MathUtils.smoothstep(reloadProgress, 0.10, 0.21) * (1 - THREE.MathUtils.smoothstep(reloadProgress, 0.34, 0.43));
             const insertGrip = THREE.MathUtils.smoothstep(reloadProgress, 0.53, 0.65) * (1 - THREE.MathUtils.smoothstep(reloadProgress, 0.87, 0.95));
           const reloadGrip = state.isReloading ? Math.max(removeGrip, insertGrip) : 0;
-          const leftHandRole = isKnife ? 'LEFT_KNIFE_GUARD' : (firearmInspect ? 'LEFT_INSPECT' : (state.isReloading ? 'LEFT_RELOAD' : 'LEFT_CCLAMP'));
+                    const leftHandRole = isKnife
+                        ? (knifeInspect ? 'LEFT_KNIFE_INSPECT' : 'LEFT_KNIFE_GUARD')
+                        : (firearmInspect ? 'LEFT_INSPECT' : (state.isReloading ? 'LEFT_RELOAD' : 'LEFT_CCLAMP'));
           const leftHandGrip = knifeInspect || firearmInspect ? inspectGrip : reloadGrip;
           poseHandForWeapon(skeletonRig.leftHand, -1, leftHandRole, leftHandGrip);
           
                     const activeFirearm = getActiveFirearmModel();
                     if (activeFirearm.userData.triggerShoe) {
-                        activeFirearm.userData.triggerShoe.rotation.x = 1.80 - state.recoilKick * 0.40;
+                        activeFirearm.userData.triggerShoe.rotation.x = 1.80 - triggerPress * 0.40;
                     } else if (activeFirearm.userData.triggerContact?.isMesh) {
                         const restRotation = activeFirearm.userData.triggerContact.userData.restRotationX || 0;
-                        activeFirearm.userData.triggerContact.rotation.x = restRotation - state.recoilKick * 0.18;
+                        activeFirearm.userData.triggerContact.rotation.x = restRotation - triggerPress * 0.18;
           }
         }
 
