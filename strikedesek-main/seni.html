@@ -860,7 +860,7 @@
         let humanRoot, skeletonRig = {};
         const factionOutfits = { CT: [], T: [] };
         let skinMeshes = [], gloveMeshes = [], gloveAccentMeshes = [], muscleOnlyMeshes = [], clothesMeshes = [];
-        let targetPlates = [], activeShells = [];
+        let targetPlates = [], activeShells = [], droppedMagazines = [], turkishFlags = [];
         let muzzleFlashMesh, muzzleLight, laserBeam, laserDotMesh;
 
         const state = {
@@ -900,6 +900,13 @@
             weaponCycleTimer: 0,
             isReloading: false,
             reloadProgress: 0,
+            reloadDuration: 0,
+            reloadDropped: false,
+            reloadInsertStart: null,
+            reloadInsertStartQuaternion: null,
+            reloadSeated: false,
+            reloadOldMagazineTarget: null,
+            reloadPouchGrabbed: false,
             ammo: 35,
             ammoByWeapon: { RIFLE: 35, AK47: 30, AWP: 10, DEAGLE: 7 },
             reserveAmmo: 200,
@@ -1108,6 +1115,42 @@
                     gain.connect(audioCtx.destination);
                     osc.start(now);
                     osc.stop(now + 0.25);
+                } else if (type === 'reload-eject') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(260, now);
+                    osc.frequency.exponentialRampToValueAtTime(88, now + 0.11);
+                    gain.gain.setValueAtTime(0.13, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'reload-grab') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(540, now);
+                    osc.frequency.exponentialRampToValueAtTime(190, now + 0.09);
+                    gain.gain.setValueAtTime(0.11, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.13);
+                } else if (type === 'reload-seat') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(720, now);
+                    osc.frequency.exponentialRampToValueAtTime(230, now + 0.07);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.10);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.11);
                 }
             } catch (e) {}
         }
@@ -2820,6 +2863,8 @@
             triggerShoe.position.set(0, -0.036, -0.032);
             gunCore.add(triggerShoe);
             gun.userData.triggerShoe = triggerShoe;
+            gun.userData.triggerContact = triggerShoe;
+            triggerShoe.userData.restRotationX = triggerShoe.rotation.x;
 
             // 30'luk STANAG/PMAG Şarjör ve Görünür Pirinç Mermiler
             const magGroup = new THREE.Group();
@@ -2988,6 +3033,15 @@
             pistolGrip.position.set(0, -0.083, -0.085);
             pistolGrip.rotation.x = -0.20;
             core.add(pistolGrip);
+            const triggerGuard = new THREE.Mesh(new THREE.TorusGeometry(0.024, 0.0038, 8, 18, Math.PI), sharedMaterials.gunMetal);
+            triggerGuard.rotation.y = Math.PI / 2;
+            triggerGuard.position.set(0, -0.040, -0.042);
+            core.add(triggerGuard);
+            const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.022, 0.008), sharedMaterials.bayonetEdge);
+            trigger.position.set(0, -0.036, -0.038);
+            core.add(trigger);
+            gun.userData.triggerContact = trigger;
+            trigger.userData.restRotationX = trigger.rotation.x;
 
             const magazines = [];
             for (let index = 0; index < 2; index++) {
@@ -3136,6 +3190,12 @@
         }
 
         function addFirearmHandAnchors(gun) {
+            if (!gun.userData.triggerContact) {
+                const triggerContact = new THREE.Object3D();
+                triggerContact.position.set(0, -0.036, 0.038);
+                gun.add(triggerContact);
+                gun.userData.triggerContact = triggerContact;
+            }
             const rightGripAnchor = new THREE.Group();
             const rX = new THREE.Vector3(0.05, 0.95, -0.31).normalize();
             const rY = new THREE.Vector3(-0.16, 0.29, -0.94).normalize();
@@ -3228,6 +3288,11 @@
             triggerGuard.rotation.y = Math.PI / 2;
             triggerGuard.position.set(0, -0.035, -0.045);
             core.add(triggerGuard);
+            const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.024, 0.008), sharedMaterials.bayonetEdge);
+            trigger.position.set(0, -0.030, -0.044);
+            core.add(trigger);
+            gun.userData.triggerContact = trigger;
+            trigger.userData.restRotationX = trigger.rotation.x;
             const pistolGrip = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.12, 0.052), sharedMaterials.gunPolymer);
             pistolGrip.position.set(0, -0.09, -0.09);
             pistolGrip.rotation.x = -0.20;
@@ -3317,6 +3382,8 @@
             const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.024, 0.008), sharedMaterials.brass);
             trigger.position.set(0, -0.030, -0.044);
             core.add(trigger);
+            gun.userData.triggerContact = trigger;
+            trigger.userData.restRotationX = trigger.rotation.x;
 
             const magazines = [];
             for (let index = 0; index < 2; index++) {
@@ -4338,6 +4405,11 @@
                 waistBelt.scale.set(1, 0.78, 1);
                 const innerBelt = torus(faction, pelvis, webbingMat, 0.155, 0.009, [0, -0.045, 0], [Math.PI / 2, 0, 0]);
                 innerBelt.scale.set(1, 0.80, 1);
+                const reloadPouchAnchor = new THREE.Group();
+                reloadPouchAnchor.position.set(faction === 'CT' ? -0.12 : 0.12, -0.09, -0.15);
+                pelvis.add(reloadPouchAnchor);
+                skeletonRig.reloadPouchAnchors = skeletonRig.reloadPouchAnchors || {};
+                skeletonRig.reloadPouchAnchors[faction] = reloadPouchAnchor;
                 box(faction, pelvis, rubberMat, [0.12, 0.07, 0.018], [0, -0.018, -0.152]);
                 box(faction, pelvis, patch, [0.046, 0.042, 0.013], [-0.033, -0.02, -0.166]);
                 box(faction, pelvis, webbingMat, [0.046, 0.054, 0.012], [0.033, -0.02, -0.164]);
@@ -4724,24 +4796,62 @@
           }
         }
         
-        function poseHandForWeapon(handGroup, side, role, triggerPull = 0) {
+        function poseIndexFingerOnTrigger(handGroup, triggerTarget, triggerPull = 0) {
+            if (!triggerTarget) return;
+            const indexFinger = handGroup.userData.fingers.index;
+            const root = indexFinger.mcpJoint.position;
+            const press = THREE.MathUtils.clamp(triggerPull, 0, 1);
+            const dx = triggerTarget.x - root.x;
+            const dy = triggerTarget.y - root.y - press * 0.002;
+            const dz = triggerTarget.z - root.z;
+            const firstLength = 0.033;
+            const distalLength = 0.025 + 0.019;
+            const distance = THREE.MathUtils.clamp(
+                Math.hypot(dx, dy, dz),
+                Math.abs(firstLength - distalLength) + 0.001,
+                firstLength + distalLength - 0.001
+            );
+            const shoulderCos = THREE.MathUtils.clamp(
+                (firstLength * firstLength + distance * distance - distalLength * distalLength) /
+                    (2 * firstLength * distance),
+                -1,
+                1
+            );
+            const elbowCos = THREE.MathUtils.clamp(
+                (firstLength * firstLength + distalLength * distalLength - distance * distance) /
+                    (2 * firstLength * distalLength),
+                -1,
+                1
+            );
+            const reachAngle = Math.atan2(dz, Math.hypot(dx, dy));
+            const shoulderFlex = reachAngle - Math.acos(shoulderCos);
+            const elbowFlex = Math.PI - Math.acos(elbowCos);
+            const fingerSpread = THREE.MathUtils.clamp(-Math.atan2(dx, dy), -1.35, 1.35);
+
+            indexFinger.mcpJoint.rotation.set(shoulderFlex + press * 0.05, 0, fingerSpread);
+            indexFinger.pipJoint.rotation.set(elbowFlex * 0.72 + press * 0.10, 0, 0);
+            indexFinger.dipJoint.rotation.set(elbowFlex * 0.28 + press * 0.12, 0, 0);
+        }
+
+        function poseHandForWeapon(handGroup, side, role, triggerPull = 0, triggerTarget = null) {
           const f = handGroup.userData.fingers;
           const thumbBase = handGroup.userData.thumbBase;
           const thumbDistal = handGroup.userData.thumbDistal;
           if (!f || !thumbBase) return;
           
           if (role === 'RIGHT_RIFLE') {
-            thumbBase.rotation.set(0.55, -side * 0.22, side * 0.45);
-            thumbDistal.rotation.set(0.40, 0, 0);
-            
-            f.index.mcpJoint.rotation.set(0.32 + triggerPull * 0.38, 0, -0.06);
-            f.index.pipJoint.rotation.set(0.68 + triggerPull * 0.35, 0, 0);
-            f.index.dipJoint.rotation.set(0.38, 0, 0);
+                        thumbBase.rotation.set(0.52, -side * 0.18, side * 0.48);
+                        thumbDistal.rotation.set(0.42, 0, 0);
+
+                        f.index.mcpJoint.rotation.set(0.32, 0, -0.06);
+                        f.index.pipJoint.rotation.set(0.54, 0, 0);
+                        f.index.dipJoint.rotation.set(0.28, 0, 0);
+                        poseIndexFingerOnTrigger(handGroup, triggerTarget, triggerPull);
             
             ['middle', 'ring', 'pinky'].forEach((name, idx) => {
-              f[name].mcpJoint.rotation.set(1.38 + idx * 0.05, 0, 0);
-              f[name].pipJoint.rotation.set(1.48, 0, 0);
-              f[name].dipJoint.rotation.set(1.05, 0, 0);
+                            f[name].mcpJoint.rotation.set(1.42 + idx * 0.05, 0, 0);
+                            f[name].pipJoint.rotation.set(1.52, 0, 0);
+                            f[name].dipJoint.rotation.set(1.10, 0, 0);
             });
                     } else if (role === 'RIGHT_INSPECT') {
                         const grip = THREE.MathUtils.clamp(triggerPull, 0, 1);
@@ -4775,12 +4885,12 @@
                         });
                     } else if (role === 'LEFT_RELOAD') {
                         const grip = THREE.MathUtils.clamp(triggerPull, 0, 1);
-                        thumbBase.rotation.set(0.42 + grip * 0.18, -side * 0.20, side * 0.28);
-                        thumbDistal.rotation.set(0.32 + grip * 0.22, 0, 0);
+                        thumbBase.rotation.set(0.20 + grip * 0.42, -side * 0.14, side * 0.24);
+                        thumbDistal.rotation.set(0.12 + grip * 0.38, 0, 0);
                         ['index', 'middle', 'ring', 'pinky'].forEach((name, idx) => {
-                            f[name].mcpJoint.rotation.set(0.62 + grip * 0.66 + idx * 0.025, 0, 0);
-                            f[name].pipJoint.rotation.set(0.82 + grip * 0.54, 0, 0);
-                            f[name].dipJoint.rotation.set(0.48 + grip * 0.34, 0, 0);
+                            f[name].mcpJoint.rotation.set(0.16 + grip * 1.04 + idx * 0.025, 0, 0);
+                            f[name].pipJoint.rotation.set(0.24 + grip * 1.10, 0, 0);
+                            f[name].dipJoint.rotation.set(0.14 + grip * 0.72, 0, 0);
                         });
           } else if (role === 'RIGHT_KARAMBIT') {
                         const inspectGrip = THREE.MathUtils.clamp(triggerPull, 0, 1);
@@ -4876,6 +4986,28 @@
                 .addScaledVector(up, -0.08);
             inspectKeyLight.intensity = state.inspectPresentation * 2.0;
             inspectFillLight.intensity = state.inspectPresentation * 0.8;
+        }
+
+        function spawnDroppedMagazine(sourceMagazine) {
+            sourceMagazine.updateMatrixWorld(true);
+            const droppedMesh = sourceMagazine.clone(true);
+            droppedMesh.visible = true;
+            const worldPosition = new THREE.Vector3();
+            const worldQuaternion = new THREE.Quaternion();
+            const worldScale = new THREE.Vector3();
+            sourceMagazine.matrixWorld.decompose(worldPosition, worldQuaternion, worldScale);
+            scene.add(droppedMesh);
+            droppedMesh.position.copy(worldPosition);
+            droppedMesh.quaternion.copy(worldQuaternion);
+            droppedMesh.scale.copy(worldScale);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            droppedMagazines.push({
+                mesh: droppedMesh,
+                velocity: right.multiplyScalar(-0.12).add(new THREE.Vector3(0, 0.28, 0)).addScaledVector(forward, 0.05),
+                angularVelocity: new THREE.Vector3(5.2, 7.4, 3.8),
+                life: 3.2
+            });
         }
 
         function updateTwoHandedWeaponIK(adsFactor, recoilOffset, dt) {
@@ -5035,34 +5167,94 @@
                         const spareMag = magazineGroups[1 - loadedIndex];
                         const loadedHome = loadedMag.userData.reloadHome;
                         const spareHome = spareMag.userData.reloadHome;
-                        loadedMag.position.copy(loadedHome);
-                        loadedMag.rotation.copy(loadedMag.userData.reloadHomeRotation);
-                        spareMag.position.copy(spareHome);
-                        spareMag.rotation.copy(spareMag.userData.reloadHomeRotation);
-                        loadedMag.visible = true;
-                        spareMag.visible = false;
+                        const spareHomeRotation = spareMag.userData.reloadHomeRotation;
+                        const spareHomeParent = spareMag.userData.reloadHomeParent || (spareMag.userData.reloadHomeParent = spareMag.parent);
+                        const loadedHomeParent = loadedMag.userData.reloadHomeParent || (loadedMag.userData.reloadHomeParent = loadedMag.parent);
+                        if (loadedMag.parent !== skeletonRig.leftWristGroup) {
+                            if (loadedMag.parent !== loadedHomeParent) loadedHomeParent.add(loadedMag);
+                            loadedMag.position.copy(loadedHome);
+                            loadedMag.rotation.copy(loadedMag.userData.reloadHomeRotation);
+                            loadedMag.visible = true;
+                        }
 
                         if (state.isReloading && !isKnife) {
                             const progress = THREE.MathUtils.clamp(state.reloadProgress, 0, 1);
-                            const eject = THREE.MathUtils.smoothstep(progress, 0.18, 0.46);
-                            const insert = THREE.MathUtils.smoothstep(progress, 0.48, 0.76);
-                            const ejectEnd = loadedHome.clone().add(new THREE.Vector3(0.055, -0.19, 0.025));
-                            const spareStart = spareHome.clone().add(new THREE.Vector3(0.10, -0.30, 0.14));
+                            const pouchAnchor = skeletonRig.reloadPouchAnchors?.[state.faction];
+                            const eject = THREE.MathUtils.smoothstep(progress, 0.20, 0.34);
+                            const insert = THREE.MathUtils.smoothstep(progress, 0.80, 0.92);
+                            const ejectEnd = loadedHome.clone().add(new THREE.Vector3(0.035, -0.17, 0.025));
+                            if (progress < 0.34 && loadedMag.parent !== skeletonRig.leftWristGroup) {
+                                loadedMag.position.lerpVectors(loadedHome, ejectEnd, eject);
+                                loadedMag.rotation.copy(loadedMag.userData.reloadHomeRotation);
+                                loadedMag.rotation.x += eject * 0.42;
+                                loadedMag.rotation.z += eject * 0.30;
+                            }
 
-                            loadedMag.position.lerpVectors(loadedHome, ejectEnd, eject);
-                            loadedMag.rotation.z -= eject * 0.78;
-                            loadedMag.visible = progress < 0.46;
+                            if (progress >= 0.34 && progress < 0.42 && loadedMag.parent !== skeletonRig.leftWristGroup) {
+                                state.reloadOldMagazineTarget = loadedMag.getWorldPosition(new THREE.Vector3())
+                                    .applyMatrix4(new THREE.Matrix4().copy(skeletonRig.armsContainer.matrixWorld).invert())
+                                    .add(new THREE.Vector3(0, 0.075, 0.025));
+                                skeletonRig.leftWristGroup.attach(loadedMag);
+                            }
 
-                            spareMag.visible = progress >= 0.42;
-                            spareMag.position.lerpVectors(spareStart, spareHome, insert);
-                            spareMag.rotation.z += (1 - insert) * 0.38;
-                            spareMag.position.y -= Math.sin(THREE.MathUtils.smoothstep(progress, 0.74, 0.86) * Math.PI) * 0.018;
+                            if (progress < 0.42) {
+                                if (progress < 0.34 || loadedMag.parent === skeletonRig.leftWristGroup) loadedMag.visible = true;
+                            } else {
+                                if (!state.reloadDropped) {
+                                spawnDroppedMagazine(loadedMag);
+                                state.reloadDropped = true;
+                                playProceduralSound('reload-eject');
+                                }
+                                if (loadedMag.parent !== loadedHomeParent) loadedHomeParent.attach(loadedMag);
+                                loadedMag.position.copy(loadedHome);
+                                loadedMag.rotation.copy(loadedMag.userData.reloadHomeRotation);
+                                loadedMag.visible = false;
+                            }
+
+                            if (progress >= 0.55 && !state.reloadPouchGrabbed) {
+                                state.reloadPouchGrabbed = true;
+                                playProceduralSound('reload-grab');
+                            }
+                            if (progress >= 0.55 && progress < 0.68 && pouchAnchor && spareMag.parent !== pouchAnchor) {
+                                pouchAnchor.attach(spareMag);
+                                spareMag.position.set(0, 0.018, 0.008);
+                                spareMag.rotation.set(0, 0, 0);
+                                state.reloadInsertStart = null;
+                                state.reloadInsertStartQuaternion = null;
+                            }
+                            if (progress >= 0.68 && progress < 0.80 && spareMag.parent !== skeletonRig.leftWristGroup) {
+                                skeletonRig.leftWristGroup.attach(spareMag);
+                                spareMag.position.set(0, 0.045, 0.025);
+                                spareMag.rotation.set(0, 0, 0);
+                            }
+                            if (progress >= 0.80 && spareMag.parent !== spareHomeParent) {
+                                spareHomeParent.attach(spareMag);
+                                state.reloadInsertStart = spareMag.position.clone();
+                                state.reloadInsertStartQuaternion = spareMag.quaternion.clone();
+                            }
+
+                            spareMag.visible = progress >= 0.55;
+                            if (spareMag.parent === spareHomeParent && state.reloadInsertStart) {
+                                spareMag.position.lerpVectors(state.reloadInsertStart, spareHome, insert);
+                                const homeQuaternion = new THREE.Quaternion().setFromEuler(spareHomeRotation);
+                                spareMag.quaternion.slerpQuaternions(state.reloadInsertStartQuaternion, homeQuaternion, insert);
+                                spareMag.position.y -= Math.sin(THREE.MathUtils.smoothstep(progress, 0.82, 0.90) * Math.PI) * 0.012;
+                            }
+                            if (progress >= 0.92 && !state.reloadSeated) {
+                                state.reloadSeated = true;
+                                playProceduralSound('reload-seat');
+                            }
 
                             const chargingHandle = rifleData.chargingHandle;
                             if (chargingHandle) {
-                                const rack = THREE.MathUtils.smoothstep(progress, 0.82, 0.88) * (1 - THREE.MathUtils.smoothstep(progress, 0.92, 0.99));
+                                const rack = THREE.MathUtils.smoothstep(progress, 0.92, 0.95) * (1 - THREE.MathUtils.smoothstep(progress, 0.97, 0.995));
                                 chargingHandle.position.z = (rifleData.fireCycleRest ?? -0.095) - rack * 0.042;
                             }
+                        } else {
+                            if (spareMag.parent !== spareHomeParent) spareHomeParent.add(spareMag);
+                            spareMag.position.copy(spareHome);
+                            spareMag.rotation.copy(spareHomeRotation);
+                            spareMag.visible = false;
                         }
                     }
 
@@ -5108,12 +5300,46 @@
           
           if (state.isReloading && !isKnife) {
                         const progress = THREE.MathUtils.clamp(state.reloadProgress, 0, 1);
-                        const removeMag = THREE.MathUtils.smoothstep(progress, 0.14, 0.34) * (1 - THREE.MathUtils.smoothstep(progress, 0.38, 0.48));
-                        const grabSpare = THREE.MathUtils.smoothstep(progress, 0.42, 0.58) * (1 - THREE.MathUtils.smoothstep(progress, 0.72, 0.88));
-                        const seatMag = THREE.MathUtils.smoothstep(progress, 0.62, 0.78) * (1 - THREE.MathUtils.smoothstep(progress, 0.80, 0.91));
-                        leftGripPos.y -= removeMag * 0.10 + grabSpare * 0.065 + seatMag * 0.085;
-                        leftGripPos.z += removeMag * 0.13 + grabSpare * 0.09 + seatMag * 0.12;
-                        leftGripPos.x += removeMag * 0.035 - grabSpare * 0.04 - seatMag * 0.025;
+                        const reloadFirearmData = getActiveFirearmModel().userData;
+                        const magazineGroups = reloadFirearmData.magazineGroups;
+                        const loadedMag = magazineGroups[reloadFirearmData.loadedMagazineIndex];
+                        const spareMag = magazineGroups[1 - reloadFirearmData.loadedMagazineIndex];
+                        const normalGripPos = leftGripPos.clone();
+                        const invArmMatrix = new THREE.Matrix4().copy(skeletonRig.armsContainer.matrixWorld).invert();
+                        loadedMag.updateMatrixWorld(true);
+                        const oldMagazineTarget = progress < 0.34 || !state.reloadOldMagazineTarget
+                            ? loadedMag.getWorldPosition(new THREE.Vector3())
+                                .applyMatrix4(invArmMatrix)
+                                .add(new THREE.Vector3(0, 0.075, 0.025))
+                            : state.reloadOldMagazineTarget.clone();
+                        if (progress < 0.34) state.reloadOldMagazineTarget = oldMagazineTarget.clone();
+                        const pouchAnchor = skeletonRig.reloadPouchAnchors?.[state.faction];
+                        if (pouchAnchor) {
+                            const pouchTarget = pouchAnchor.getWorldPosition(new THREE.Vector3())
+                                .applyMatrix4(invArmMatrix)
+                                .add(new THREE.Vector3(0, 0.045, 0.025));
+                            const pouchWorldQuat = pouchAnchor.getWorldQuaternion(new THREE.Quaternion());
+                            const armWorldQuat = skeletonRig.armsContainer.getWorldQuaternion(new THREE.Quaternion()).invert();
+                            const pouchGripQuat = armWorldQuat.multiply(pouchWorldQuat)
+                                .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.28, 0, 0)));
+                            const removeMag = THREE.MathUtils.smoothstep(progress, 0.10, 0.21) * (1 - THREE.MathUtils.smoothstep(progress, 0.34, 0.43));
+                            const reachPouch = THREE.MathUtils.smoothstep(progress, 0.38, 0.50) * (1 - THREE.MathUtils.smoothstep(progress, 0.64, 0.73));
+                            const insertMag = THREE.MathUtils.smoothstep(progress, 0.72, 0.81) * (1 - THREE.MathUtils.smoothstep(progress, 0.90, 0.96));
+                            const returnToForegrip = THREE.MathUtils.smoothstep(progress, 0.91, 0.99);
+                            const spareHomeParent = spareMag.userData.reloadHomeParent || spareMag.parent;
+                            const normalGripQuat = leftGripQuat.clone();
+                            spareHomeParent.updateMatrixWorld(true);
+                            const magazineWellTarget = spareHomeParent.localToWorld(spareMag.userData.reloadHome.clone())
+                                .applyMatrix4(invArmMatrix)
+                                .add(new THREE.Vector3(0, 0.075, 0.025));
+                            leftGripPos.lerp(oldMagazineTarget, removeMag);
+                            leftGripPos.lerp(pouchTarget, reachPouch);
+                            leftGripPos.lerp(magazineWellTarget, insertMag);
+                            leftGripPos.lerp(normalGripPos, returnToForegrip);
+                            leftGripQuat.slerp(pouchGripQuat, reachPouch);
+                            leftGripQuat.slerp(normalGripQuat, insertMag);
+                            leftGripQuat.slerp(normalGripQuat, returnToForegrip);
+                        }
           }
           
           if (isKnife) {
@@ -5153,6 +5379,14 @@
           
           skeletonRig.rightWristGroup.position.copy(rightGripPos);
           skeletonRig.rightWristGroup.quaternion.copy(rightGripQuat);
+                    skeletonRig.rightWristGroup.updateMatrixWorld(true);
+
+                    let rightTriggerTarget = null;
+                    if (!isKnife && activeWeapon.userData.triggerContact) {
+                        activeWeapon.updateMatrixWorld(true);
+                        rightTriggerTarget = activeWeapon.userData.triggerContact.getWorldPosition(new THREE.Vector3());
+                        skeletonRig.rightWristGroup.worldToLocal(rightTriggerTarget);
+                    }
           
           skeletonRig.leftWristGroup.position.copy(leftGripPos);
           skeletonRig.leftWristGroup.quaternion.copy(leftGripQuat);
@@ -5164,10 +5398,10 @@
           const knifeInspect = Boolean(inspectPose && isKnife);
           const activeRightHandRole = firearmInspect ? 'RIGHT_INSPECT' : (karambitInspect ? 'RIGHT_KARAMBIT_INSPECT' : rightHandRole);
           const rightHandGrip = knifeInspect ? inspectGrip : (firearmInspect ? inspectGrip : state.recoilKick);
-          poseHandForWeapon(skeletonRig.rightHand, 1, activeRightHandRole, rightHandGrip);
+          poseHandForWeapon(skeletonRig.rightHand, 1, activeRightHandRole, rightHandGrip, rightTriggerTarget);
           const reloadProgress = THREE.MathUtils.clamp(state.reloadProgress, 0, 1);
-          const removeGrip = THREE.MathUtils.smoothstep(reloadProgress, 0.08, 0.22) * (1 - THREE.MathUtils.smoothstep(reloadProgress, 0.34, 0.46));
-          const insertGrip = THREE.MathUtils.smoothstep(reloadProgress, 0.46, 0.60) * (1 - THREE.MathUtils.smoothstep(reloadProgress, 0.78, 0.92));
+            const removeGrip = THREE.MathUtils.smoothstep(reloadProgress, 0.10, 0.21) * (1 - THREE.MathUtils.smoothstep(reloadProgress, 0.34, 0.43));
+            const insertGrip = THREE.MathUtils.smoothstep(reloadProgress, 0.53, 0.65) * (1 - THREE.MathUtils.smoothstep(reloadProgress, 0.87, 0.95));
           const reloadGrip = state.isReloading ? Math.max(removeGrip, insertGrip) : 0;
           const leftHandRole = isKnife ? 'LEFT_KNIFE_GUARD' : (firearmInspect ? 'LEFT_INSPECT' : (state.isReloading ? 'LEFT_RELOAD' : 'LEFT_CCLAMP'));
           const leftHandGrip = knifeInspect || firearmInspect ? inspectGrip : reloadGrip;
@@ -5176,6 +5410,9 @@
                     const activeFirearm = getActiveFirearmModel();
                     if (activeFirearm.userData.triggerShoe) {
                         activeFirearm.userData.triggerShoe.rotation.x = 1.80 - state.recoilKick * 0.40;
+                    } else if (activeFirearm.userData.triggerContact?.isMesh) {
+                        const restRotation = activeFirearm.userData.triggerContact.userData.restRotationX || 0;
+                        activeFirearm.userData.triggerContact.rotation.x = restRotation - state.recoilKick * 0.18;
           }
         }
 
@@ -5194,9 +5431,170 @@
             );
         }
 
+        function createTurkishFlagTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1200;
+            canvas.height = 800;
+            const context = canvas.getContext('2d');
+            const red = '#E30A17';
+
+            const field = context.createLinearGradient(0, 0, 1200, 0);
+            field.addColorStop(0, '#C90012');
+            field.addColorStop(0.18, red);
+            field.addColorStop(0.52, '#EC1725');
+            field.addColorStop(0.86, red);
+            field.addColorStop(1, '#C90012');
+            context.fillStyle = field;
+            context.fillRect(0, 0, canvas.width, canvas.height);
+
+            context.fillStyle = '#FFFFFF';
+            context.beginPath();
+            context.arc(360, 400, 190, 0, Math.PI * 2);
+            context.fill();
+            context.fillStyle = red;
+            context.beginPath();
+            context.arc(430, 400, 152, 0, Math.PI * 2);
+            context.fill();
+
+            const starCenterX = 650;
+            const starCenterY = 400;
+            context.beginPath();
+            for (let point = 0; point < 10; point++) {
+                const angle = -Math.PI / 2 + point * Math.PI / 5;
+                const radius = point % 2 === 0 ? 94 : 38;
+                const x = starCenterX + Math.cos(angle) * radius;
+                const y = starCenterY + Math.sin(angle) * radius;
+                if (point === 0) context.moveTo(x, y);
+                else context.lineTo(x, y);
+            }
+            context.closePath();
+            context.fillStyle = '#FFFFFF';
+            context.fill();
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.encoding = THREE.sRGBEncoding;
+            texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            return texture;
+        }
+
+        function buildMidTurkishFlags() {
+            const fabricTexture = createTurkishFlagTexture();
+            const fabricMaterial = new THREE.MeshStandardMaterial({
+                map: fabricTexture,
+                side: THREE.DoubleSide,
+                roughness: 0.82,
+                metalness: 0.015
+            });
+            const poleMaterial = new THREE.MeshStandardMaterial({ color: 0xc9a15b, metalness: 0.78, roughness: 0.24 });
+            const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x303b3d, metalness: 0.68, roughness: 0.36 });
+            const flagWidth = 4.8;
+            const flagHeight = 3.2;
+            const mastHeight = 8.8;
+
+            [
+                { x: -6.2, z: 2.5, rotation: Math.PI / 2, phase: 0 },
+                { x: 6.2, z: 2.5, rotation: -Math.PI / 2, phase: Math.PI * 0.62 }
+            ].forEach((placement) => {
+                const assembly = new THREE.Group();
+                assembly.position.set(placement.x, 0, placement.z);
+                assembly.rotation.y = placement.rotation;
+                scene.add(assembly);
+
+                const footing = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.58, 0.24, 32), baseMaterial);
+                footing.position.y = 0.12;
+                footing.castShadow = true;
+                footing.receiveShadow = true;
+                assembly.add(footing);
+
+                const baseTrim = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.025, 10, 36), poleMaterial);
+                baseTrim.rotation.x = Math.PI / 2;
+                baseTrim.position.y = 0.24;
+                assembly.add(baseTrim);
+
+                const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.092, mastHeight, 20, 1), poleMaterial);
+                mast.position.y = mastHeight / 2 + 0.24;
+                mast.castShadow = true;
+                mast.receiveShadow = true;
+                assembly.add(mast);
+
+                [0.48, 4.05, 7.95].forEach((height, index) => {
+                    const collar = new THREE.Mesh(new THREE.TorusGeometry(index === 0 ? 0.082 : 0.052, 0.012, 8, 24), poleMaterial);
+                    collar.rotation.x = Math.PI / 2;
+                    collar.position.y = height;
+                    assembly.add(collar);
+                });
+
+                const finial = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), poleMaterial);
+                finial.position.y = mastHeight + 0.31;
+                finial.castShadow = true;
+                assembly.add(finial);
+                const finialTip = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.22, 12), poleMaterial);
+                finialTip.position.y = mastHeight + 0.47;
+                assembly.add(finialTip);
+
+                const flagGeometry = new THREE.PlaneGeometry(flagWidth, flagHeight, 40, 24);
+                const flag = new THREE.Mesh(flagGeometry, fabricMaterial);
+                flag.position.set(flagWidth / 2, 0.24 + mastHeight - flagHeight / 2 - 0.52, 0);
+                flag.castShadow = true;
+                flag.receiveShadow = true;
+                flag.frustumCulled = false;
+                assembly.add(flag);
+                flag.userData.basePositions = flagGeometry.attributes.position.array.slice();
+                flag.userData.width = flagWidth;
+                flag.userData.height = flagHeight;
+                flag.userData.phase = placement.phase;
+                turkishFlags.push(flag);
+
+                for (let eyelet = 0; eyelet < 5; eyelet++) {
+                    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.038, 0.008, 8, 16), poleMaterial);
+                    ring.position.set(0.055, flag.position.y - flagHeight / 2 + 0.12 + eyelet * (flagHeight - 0.24) / 4, 0.012);
+                    assembly.add(ring);
+                }
+
+                const uplight = new THREE.SpotLight(0xffe7c7, 7.5, 18, Math.PI / 5, 0.62, 1.5);
+                uplight.position.set(placement.x - Math.sign(placement.x) * 1.8, 2.4, placement.z + 0.9);
+                uplight.target.position.set(placement.x - Math.sign(placement.x) * 0.7, flag.position.y, placement.z);
+                scene.add(uplight, uplight.target);
+
+                tacticalMapData.colliders.push({
+                    min: new THREE.Vector3(placement.x - 0.16, 0, placement.z - 0.16),
+                    max: new THREE.Vector3(placement.x + 0.16, mastHeight + 0.6, placement.z + 0.16),
+                    tag: 'turkish-flagpole'
+                });
+            });
+        }
+
+        function updateMidTurkishFlags(time) {
+            turkishFlags.forEach((flag) => {
+                const positions = flag.geometry.attributes.position;
+                const base = flag.userData.basePositions;
+                const width = flag.userData.width;
+                const height = flag.userData.height;
+                for (let vertex = 0; vertex < positions.count; vertex++) {
+                    const offset = vertex * 3;
+                    const baseX = base[offset];
+                    const baseY = base[offset + 1];
+                    const u = THREE.MathUtils.clamp((baseX + width / 2) / width, 0, 1);
+                    const v = THREE.MathUtils.clamp((baseY + height / 2) / height, 0, 1);
+                    const travelingWave = Math.sin(time * 1.65 - u * 6.6 + v * 1.8 + flag.userData.phase);
+                    const fineRipple = Math.sin(time * 2.45 - u * 12.4 - v * 2.2 + flag.userData.phase * 0.7);
+                    const edgeWeight = u * u;
+                    positions.setXYZ(
+                        vertex,
+                        baseX,
+                        baseY + Math.sin(time * 1.15 - u * 3.6 + v * 2.0 + flag.userData.phase) * edgeWeight * 0.065,
+                        base[offset + 2] + edgeWeight * (travelingWave * 0.34 + fineRipple * 0.085)
+                    );
+                }
+                positions.needsUpdate = true;
+                flag.geometry.computeVertexNormals();
+            });
+        }
+
         function buildTacticalEnvironment() {
             mapBuilder = new TacticalMapBuilder(scene);
             tacticalMapData = mapBuilder.buildFullCompetitiveMap();
+            buildMidTurkishFlags();
             state.position.set(tacticalMapData.spawns.mid.x, 0, tacticalMapData.spawns.mid.z);
 
             const targetSpecs = [
@@ -5340,11 +5738,31 @@
             }
         }
 
+        function resetReloadPresentation(firearm) {
+            const firearmData = firearm?.userData;
+            if (!firearmData?.magazineGroups) return;
+            firearmData.magazineGroups.forEach((magazine, index) => {
+                const homeParent = magazine.userData.reloadHomeParent || magazine.parent;
+                if (magazine.parent !== homeParent) homeParent.add(magazine);
+                magazine.position.copy(magazine.userData.reloadHome);
+                magazine.rotation.copy(magazine.userData.reloadHomeRotation);
+                magazine.visible = index === firearmData.loadedMagazineIndex;
+            });
+            state.reloadDuration = 0;
+            state.reloadDropped = false;
+            state.reloadInsertStart = null;
+            state.reloadInsertStartQuaternion = null;
+            state.reloadSeated = false;
+            state.reloadOldMagazineTarget = null;
+            state.reloadPouchGrabbed = false;
+        }
+
         function equipWeapon(type) {
             const weaponTypes = ['RIFLE', 'BAYONET', 'KARAMBIT', 'AK47', 'BUTTERFLY', 'TALON', 'AWP', 'DEAGLE', 'BOWIE', 'HUNTSMAN'];
             if (!weaponTypes.includes(type)) return;
             const previousType = state.equipped;
             if (state.isReloading) {
+                resetReloadPresentation(getActiveFirearmModel());
                 state.isReloading = false;
                 state.reloadProgress = 0;
             }
@@ -5402,6 +5820,13 @@
             if (state.isReloading || state.ammo >= getMagazineCapacity() || state.reserveAmmo <= 0 || isKnifeType()) return;
             state.isReloading = true;
             state.reloadProgress = 0;
+            state.reloadDuration = ({ RIFLE: 6.0, AK47: 6.2, AWP: 7.0, DEAGLE: 5.8 })[state.equipped] || 6.0;
+            state.reloadDropped = false;
+            state.reloadInsertStart = null;
+            state.reloadInsertStartQuaternion = null;
+            state.reloadSeated = false;
+            state.reloadOldMagazineTarget = null;
+            state.reloadPouchGrabbed = false;
             state.weaponCycleTimer = 0;
             state.isADS = false;
             mouseADS = false;
@@ -5411,6 +5836,8 @@
             const magazineGroups = firearmData.magazineGroups;
             if (magazineGroups) {
                 magazineGroups.forEach((mag, index) => {
+                    mag.userData.reloadHomeParent = mag.userData.reloadHomeParent || mag.parent;
+                    if (mag.parent !== mag.userData.reloadHomeParent) mag.userData.reloadHomeParent.add(mag);
                     mag.position.copy(mag.userData.reloadHome);
                     mag.rotation.copy(mag.userData.reloadHomeRotation);
                     mag.visible = index === firearmData.loadedMagazineIndex;
@@ -5799,6 +6226,7 @@
             requestAnimationFrame(animate);
             const dt = Math.min(clock.getDelta(), 0.05);
             mapBuilder.updateAnimations(clock.elapsedTime);
+            updateMidTurkishFlags(clock.elapsedTime);
 
             if (state.isFiringHeld && !isKnifeType()) {
                 fireWeapon(false);
@@ -5814,10 +6242,17 @@
                 state.weaponCycleTimer = Math.max(0, state.weaponCycleTimer - dt);
             }
             if (state.isReloading) {
-                state.reloadProgress += dt / (getActiveFirearmModel().userData.reloadDuration || 1.25);
+                state.reloadProgress += dt / (state.reloadDuration || getActiveFirearmModel().userData.reloadDuration || 1.25);
                 if (state.reloadProgress >= 1.0) {
                     state.isReloading = false;
                     state.reloadProgress = 0;
+                    state.reloadDuration = 0;
+                    state.reloadInsertStart = null;
+                    state.reloadInsertStartQuaternion = null;
+                    state.reloadSeated = false;
+                    state.reloadOldMagazineTarget = null;
+                    state.reloadPouchGrabbed = false;
+                    state.reloadDropped = false;
                     const ammoToLoad = Math.min(getMagazineCapacity() - state.ammo, state.reserveAmmo);
                     state.ammo += ammoToLoad;
                     state.reserveAmmo -= ammoToLoad;
@@ -5963,6 +6398,26 @@
                 if (s.life <= 0) {
                     scene.remove(s.mesh);
                     activeShells.splice(i, 1);
+                }
+            }
+
+            for (let i = droppedMagazines.length - 1; i >= 0; i--) {
+                const dropped = droppedMagazines[i];
+                dropped.life -= dt;
+                dropped.velocity.y -= 9.8 * dt;
+                dropped.mesh.position.addScaledVector(dropped.velocity, dt);
+                dropped.mesh.rotation.x += dropped.angularVelocity.x * dt;
+                dropped.mesh.rotation.y += dropped.angularVelocity.y * dt;
+                dropped.mesh.rotation.z += dropped.angularVelocity.z * dt;
+                if (dropped.mesh.position.y < 0.025) {
+                    dropped.mesh.position.y = 0.025;
+                    dropped.velocity.y *= -0.28;
+                    dropped.velocity.x *= 0.72;
+                    dropped.velocity.z *= 0.72;
+                }
+                if (dropped.life <= 0) {
+                    scene.remove(dropped.mesh);
+                    droppedMagazines.splice(i, 1);
                 }
             }
 
