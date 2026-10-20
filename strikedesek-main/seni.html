@@ -105,6 +105,9 @@
             color: #172017;
             box-shadow: 0 0 18px rgba(190, 226, 100, 0.30);
         }
+        .record-btn { border-color: rgba(248, 113, 113, 0.65); color: #fecaca; }
+        .record-btn.recording { background: #991b1b; border-color: #fca5a5; color: #fff; }
+        .record-btn:disabled { cursor: wait; opacity: 0.75; }
         .skin-btn {
             transition: all 0.15s ease;
             position: relative;
@@ -219,6 +222,7 @@
                 line-height: 1;
             }
             #top-control-bar .hud-btn span + span { display: none; }
+            #top-control-bar #btn-record-game span + span { display: inline; }
             #top-control-bar #btn-cam-fps,
             #top-control-bar #btn-cam-tps,
             #top-control-bar #btn-cam-inspect { border-color: transparent; }
@@ -468,6 +472,9 @@
         <div id="utility-group" class="glass-panel rounded-xl p-1 flex items-center gap-1 pointer-events-auto shadow-xl">
             <button id="btn-pip-mirror" title="Ayna önizlemesi" aria-label="Ayna önizlemesini aç veya kapat" onclick="togglePiPMirror()" class="hud-btn active px-2 sm:px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold border border-transparent flex items-center gap-1">
                 <span>🪞</span> <span class="hidden sm:inline">Ayna</span>
+            </button>
+            <button id="btn-record-game" title="20 saniyelik oyun videosu kaydet" aria-label="20 saniyelik oyun videosu kaydet" onclick="toggleGameRecording()" class="hud-btn record-btn px-2 sm:px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold border flex items-center gap-1">
+                <span aria-hidden="true">●</span> <span id="record-label">REC 20s</span>
             </button>
             <button id="btn-ai-toggle" title="AI telsizi" aria-label="AI telsizini aç veya kapat" onclick="toggleGeminiRadio()" class="hud-btn px-2 sm:px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold border border-emerald-500/50 text-emerald-300 flex items-center gap-1 bg-emerald-950/40">
                 <span>🤖</span> <span>AI</span>
@@ -862,6 +869,9 @@
         let skinMeshes = [], gloveMeshes = [], gloveAccentMeshes = [], muscleOnlyMeshes = [], clothesMeshes = [];
         let targetPlates = [], activeShells = [], droppedMagazines = [], turkishFlags = [];
         let muzzleFlashMesh, muzzleLight, laserBeam, laserDotMesh;
+        let activeGameRecording = null;
+        let recordingCountdown = null;
+        let ffmpegConversionPromise = null;
 
         const state = {
             cameraMode: 'FPS',
@@ -6177,10 +6187,159 @@
 
         function toggleAnatomyDrawer() { document.getElementById('anatomy-drawer').classList.toggle('hidden'); }
         function togglePiPMirror() {
+            if (activeGameRecording) return;
             state.showPiPMirror = !state.showPiPMirror;
             document.getElementById('pip-overlay').classList.toggle('hidden', !state.showPiPMirror);
             document.getElementById('btn-pip-mirror').classList.toggle('active', state.showPiPMirror);
         }
+        function setRecordingButton(label, title, recording = false, disabled = false) {
+            const button = document.getElementById('btn-record-game');
+            button.classList.toggle('recording', recording);
+            button.disabled = disabled;
+            button.title = title;
+            button.setAttribute('aria-label', title);
+            document.getElementById('record-label').textContent = label;
+        }
+
+        async function convertRecordingToMp4(webmBlob) {
+            if (!ffmpegConversionPromise) {
+                ffmpegConversionPromise = (async () => {
+                    const [{ FFmpeg }, { toBlobURL }] = await Promise.all([
+                        import('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js'),
+                        import('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js')
+                    ]);
+                    const ffmpeg = new FFmpeg();
+                    const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+                    await ffmpeg.load({
+                        coreURL: await toBlobURL(`${coreBase}/ffmpeg-core.js`, 'text/javascript'),
+                        wasmURL: await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, 'application/wasm')
+                    });
+                    return ffmpeg;
+                })();
+            }
+
+            let ffmpeg;
+            try {
+                ffmpeg = await ffmpegConversionPromise;
+            } catch (error) {
+                ffmpegConversionPromise = null;
+                throw error;
+            }
+
+            try {
+                await ffmpeg.writeFile('game-recording.webm', new Uint8Array(await webmBlob.arrayBuffer()));
+                await ffmpeg.exec([
+                    '-i', 'game-recording.webm', '-an', '-c:v', 'libx264', '-preset', 'ultrafast',
+                    '-crf', '24', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', 'game-recording.mp4'
+                ]);
+                const mp4Data = await ffmpeg.readFile('game-recording.mp4');
+                await ffmpeg.deleteFile('game-recording.webm');
+                await ffmpeg.deleteFile('game-recording.mp4');
+                return new Blob([mp4Data], { type: 'video/mp4' });
+            } finally {
+                ffmpeg.terminate();
+                ffmpegConversionPromise = null;
+            }
+        }
+
+        function downloadRecording(blob, extension) {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `oyun-kaydi-${new Date().toISOString().replace(/[:.]/g, '-')}.${extension}`;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+        }
+
+        function toggleGameRecording() {
+            if (activeGameRecording) {
+                activeGameRecording.recorder.stop();
+                return;
+            }
+
+            const canvas = renderer && renderer.domElement;
+            if (!canvas || !canvas.captureStream || !window.MediaRecorder) {
+                setRecordingButton('Destek yok', 'Bu tarayıcı oyun videosu kaydını desteklemiyor', false, true);
+                setTimeout(() => setRecordingButton('REC 20s', '20 saniyelik oyun videosu kaydet'), 3000);
+                return;
+            }
+
+            const mimeType = [
+                'video/mp4;codecs=avc1.42E01E', 'video/mp4',
+                'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'
+            ].find((type) => MediaRecorder.isTypeSupported(type));
+            if (!mimeType) {
+                setRecordingButton('Destek yok', 'Bu tarayıcı uyumlu video biçimini desteklemiyor', false, true);
+                setTimeout(() => setRecordingButton('REC 20s', '20 saniyelik oyun videosu kaydet'), 3000);
+                return;
+            }
+
+            try {
+                const stream = canvas.captureStream(30);
+                const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5000000 });
+                const mirrorWasVisible = state.showPiPMirror;
+                const chunks = [];
+                activeGameRecording = { recorder, stream, chunks, mirrorWasVisible };
+                state.showPiPMirror = false;
+                document.getElementById('pip-overlay').classList.add('hidden');
+                document.getElementById('btn-pip-mirror').disabled = true;
+                recorder.ondataavailable = (event) => {
+                    if (event.data && event.data.size) chunks.push(event.data);
+                };
+                recorder.onerror = () => {
+                    if (recorder.state !== 'inactive') recorder.stop();
+                };
+                recorder.onstop = async () => {
+                    const recording = activeGameRecording;
+                    activeGameRecording = null;
+                    clearInterval(recordingCountdown);
+                    recording.stream.getTracks().forEach((track) => track.stop());
+                    state.showPiPMirror = recording.mirrorWasVisible;
+                    document.getElementById('pip-overlay').classList.toggle('hidden', !recording.mirrorWasVisible);
+                    document.getElementById('btn-pip-mirror').disabled = false;
+                    setRecordingButton('MP4 hazırlanıyor', 'Oyun videosu MP4 biçimine dönüştürülüyor', false, true);
+
+                    const sourceBlob = new Blob(recording.chunks, { type: mimeType });
+                    if (!sourceBlob.size) {
+                        setRecordingButton('Kayıt hatası', 'Video verisi alınamadı', false, true);
+                        setTimeout(() => setRecordingButton('REC 20s', '20 saniyelik oyun videosu kaydet'), 3000);
+                        return;
+                    }
+
+                    try {
+                        const mp4Blob = mimeType.startsWith('video/mp4') ? sourceBlob : await convertRecordingToMp4(sourceBlob);
+                        downloadRecording(mp4Blob, 'mp4');
+                        setRecordingButton('İndirildi', 'MP4 oyun kaydı indirildi');
+                    } catch (error) {
+                        console.error('MP4 dönüştürme hatası:', error);
+                        downloadRecording(sourceBlob, 'webm');
+                        setRecordingButton('WebM indirildi', 'MP4 dönüştürülemedi; kayıt WebM olarak indirildi');
+                    }
+                    setTimeout(() => setRecordingButton('REC 20s', '20 saniyelik oyun videosu kaydet'), 3500);
+                };
+
+                recorder.start(1000);
+                const startedAt = performance.now();
+                setRecordingButton('REC 20s', 'Kaydı erken bitirmek için tıklayın', true);
+                recordingCountdown = setInterval(() => {
+                    const remaining = Math.max(0, Math.ceil((20000 - (performance.now() - startedAt)) / 1000));
+                    if (!activeGameRecording) return;
+                    setRecordingButton(`REC ${remaining}s`, 'Kaydı erken bitirmek için tıklayın', true);
+                    if (remaining === 0) recorder.stop();
+                }, 200);
+            } catch (error) {
+                console.error('Oyun kaydı başlatılamadı:', error);
+                if (activeGameRecording) {
+                    activeGameRecording.stream.getTracks().forEach((track) => track.stop());
+                    state.showPiPMirror = activeGameRecording.mirrorWasVisible;
+                    document.getElementById('pip-overlay').classList.toggle('hidden', !activeGameRecording.mirrorWasVisible);
+                    activeGameRecording = null;
+                }
+                document.getElementById('btn-pip-mirror').disabled = false;
+                setRecordingButton('Kayıt hatası', 'Oyun kaydı başlatılamadı', false, true);
+                setTimeout(() => setRecordingButton('REC 20s', '20 saniyelik oyun videosu kaydet'), 3000);
+            }
+        }
+
         function toggleLaserSight() {
             state.laserOn = !state.laserOn;
             if (laserBeam) laserBeam.visible = state.laserOn;
@@ -6632,6 +6791,7 @@
             }
 
             updateInspectPresentation(dt);
+            renderer.shadowMap.needsUpdate = true;
             renderer.render(scene, camera);
 
             if (state.showPiPMirror && pipCamera) {
@@ -6675,6 +6835,7 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.shadowMap.enabled = true;
+            renderer.shadowMap.autoUpdate = false;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
             renderer.toneMappingExposure = 1.15;
