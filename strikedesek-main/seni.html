@@ -4008,8 +4008,8 @@
                 const pelvis = skeletonRig.pelvis;
                 const head = skeletonRig.head;
 
-                uniformShell(faction, skeletonRig.leftHip, uniform, 0.445, [[0.091, 0.092], [0.070, 0.071], [0.006, 0.006]], [0, -0.21, 0]);
-                uniformShell(faction, skeletonRig.rightHip, uniform, 0.445, [[0.091, 0.092], [0.070, 0.071], [0.006, 0.006]], [0, -0.21, 0]);
+                uniformShell(faction, skeletonRig.leftHip, uniform, 0.445, [[0.098, 0.106], [0.077, 0.091], [0.008, 0.012]], [0, -0.21, 0], 36, 20);
+                uniformShell(faction, skeletonRig.rightHip, uniform, 0.445, [[0.098, 0.106], [0.077, 0.091], [0.008, 0.012]], [0, -0.21, 0], 36, 20);
                 uniformShell(faction, skeletonRig.leftKnee, uniform, 0.438, [[0.058, 0.061], [0.045, 0.047], [0.003, 0.004]], [0, -0.205, 0]);
                 uniformShell(faction, skeletonRig.rightKnee, uniform, 0.438, [[0.058, 0.061], [0.045, 0.047], [0.003, 0.004]], [0, -0.205, 0]);
 
@@ -4031,27 +4031,65 @@
                     box(faction, hip, uniform, [0.088, 0.075, 0.01], [side * 0.079, -0.145, -0.104]);
                     box(faction, hip, webbingMat, [0.076, 0.009, 0.008], [side * 0.079, -0.108, -0.112]);
                     box(faction, hip, patch, [0.009, 0.018, 0.006], [side * 0.079, -0.145, -0.114]);
+                    box(faction, hip, rig, [0.084, 0.071, 0.016], [side * 0.079, -0.143, -0.115]);
+                    box(faction, hip, uniform, [0.078, 0.052, 0.009], [side * 0.079, -0.15, -0.127]);
+                    box(faction, hip, webbingMat, [0.082, 0.012, 0.009], [side * 0.079, -0.109, -0.132]);
+                    box(faction, hip, webbingMat, [0.008, 0.046, 0.005], [side * 0.119, -0.151, -0.132]);
+                    box(faction, hip, webbingMat, [0.008, 0.046, 0.005], [side * 0.039, -0.151, -0.132]);
+                    for (let pocketStitch = 0; pocketStitch < 5; pocketStitch++) {
+                        box(faction, hip, patch, [0.003, 0.004, 0.002],
+                            [side * (0.052 + pocketStitch * 0.013), -0.119, -0.137]);
+                        box(faction, hip, patch, [0.003, 0.004, 0.002],
+                            [side * (0.052 + pocketStitch * 0.013), -0.178, -0.137]);
+                    }
+                    sphere(faction, hip, rubberMat, [0.006, 0.006, 0.003], [side * 0.079, -0.128, -0.139]);
 
                     const kneePad = sphere(faction, knee, pad, [0.055, 0.061, 0.026], [0, -0.035, -0.039]);
                     kneePad.rotation.x = -0.12;
+                    const kneeShell = sphere(faction, knee, rig, [0.048, 0.051, 0.012], [0, -0.035, -0.06]);
+                    kneeShell.rotation.x = -0.12;
                     box(faction, knee, rubberMat, [0.065, 0.012, 0.012], [0, -0.076, -0.049]);
                     for (let tread = 0; tread < 3; tread++) {
                         box(faction, knee, patch, [0.034, 0.004, 0.004], [0, -0.026 - tread * 0.013, -0.065]);
+                    }
+                    for (let strap = 0; strap < 2; strap++) {
+                        const y = strap === 0 ? 0.012 : -0.082;
+                        box(faction, knee, webbingMat, [0.104, 0.012, 0.008], [0, y, -0.033]);
+                        box(faction, knee, rig, [0.014, 0.021, 0.009], [side * 0.047, y, -0.032]);
+                    }
+                    for (let padRivet = -1; padRivet <= 1; padRivet += 2) {
+                        sphere(faction, knee, patch, [0.004, 0.004, 0.003], [padRivet * 0.039, -0.035, -0.069]);
                     }
 
                     box(faction, knee, rig, [0.018, 0.12, 0.018], [side * 0.041, -0.20, -0.012]);
                     const bootMesh = box(faction, ankle, bootMaterial, [0.115, 0.095, 0.23], [0, -0.019, -0.078]);
                     bootMesh.rotation.x = -0.04;
                     box(faction, ankle, rubberMat, [0.12, 0.025, 0.20], [0, -0.061, -0.079]);
-                    for (let lace = 0; lace < 4; lace++) {
-                        box(faction, ankle, patch, [0.045, 0.004, 0.006], [0, 0.032 - lace * 0.012, -0.133 + lace * 0.025]);
+                    box(faction, ankle, rig, [0.086, 0.046, 0.014], [0, -0.018, -0.169], [-0.14, 0, 0]);
+                    box(faction, ankle, rubberMat, [0.105, 0.025, 0.016], [0, -0.014, -0.185], [-0.14, 0, 0]);
+                    box(faction, ankle, rig, [0.027, 0.078, 0.018], [0, 0.014, -0.117], [-0.08, 0, 0]);
+                    for (let lace = 0; lace < 5; lace++) {
+                        const y = 0.029 - lace * 0.013;
+                        const z = -0.133 + lace * 0.022;
+                        box(faction, ankle, patch, [0.042, 0.004, 0.004], [0, y, z], [0, 0, lace % 2 === 0 ? 0.42 : -0.42]);
+                        cylinder(faction, ankle, rubberMat, 0.003, 0.003, 0.003, [-0.029, y, z], 8).rotation.x = Math.PI / 2;
+                        cylinder(faction, ankle, rubberMat, 0.003, 0.003, 0.003, [0.029, y, z], 8).rotation.x = Math.PI / 2;
                     }
                     cylinder(faction, ankle, rig, 0.058, 0.058, 0.018, [0, 0.025, 0.005], 24);
                     box(faction, ankle, rubberMat, [0.035, 0.018, 0.008], [0, 0.026, -0.045]);
                     box(faction, ankle, rig, [0.085, 0.024, 0.10], [0, 0.047, -0.06]);
                     box(faction, ankle, patch, [0.056, 0.018, 0.009], [0, 0.048, -0.115]);
+                    box(faction, ankle, webbingMat, [0.12, 0.018, 0.024], [0, 0.015, 0.022]);
+                    box(faction, ankle, rig, [0.026, 0.024, 0.013], [side * 0.046, 0.015, 0.022]);
+                    box(faction, ankle, rig, [0.088, 0.055, 0.014], [side * 0.052, -0.018, -0.068], [0, 0, side * -0.08]);
                     for (let tread = 0; tread < 5; tread++) {
                         box(faction, ankle, rubberMat, [0.105, 0.004, 0.012], [0, -0.074, -0.15 + tread * 0.036]);
+                    }
+                    for (let lug = 0; lug < 3; lug++) {
+                        for (let row = -1; row <= 1; row += 2) {
+                            box(faction, ankle, rubberMat, [0.021, 0.006, 0.018],
+                                [row * 0.036, -0.075, -0.127 + lug * 0.045]);
+                        }
                     }
                     for (let speedHook = 0; speedHook < 3; speedHook++) {
                         box(faction, ankle, patch, [0.012, 0.009, 0.009], [side * 0.045, 0.019 - speedHook * 0.018, -0.11 + speedHook * 0.028]);
@@ -4065,6 +4103,11 @@
                     const forearmGuard = sphere(faction, forearm, pad, [0.043, 0.091, 0.018], [0, -0.13, -0.061]);
                     box(faction, forearm, rubberMat, [0.046, 0.104, 0.012], [0, -0.13, -0.077]);
                     box(faction, forearm, patch, [0.031, 0.061, 0.006], [0, -0.13, -0.085]);
+                    box(faction, forearm, rig, [0.052, 0.014, 0.009], [0, -0.078, -0.079]);
+                    box(faction, forearm, rig, [0.052, 0.014, 0.009], [0, -0.183, -0.079]);
+                    for (let guardBolt = -1; guardBolt <= 1; guardBolt += 2) {
+                        sphere(faction, forearm, patch, [0.004, 0.004, 0.003], [guardBolt * 0.031, -0.13, -0.087]);
+                    }
                     box(faction, upperArm, patch, [0.035, 0.025, 0.008], [0, -0.072, -0.063]);
                     cylinder(faction, upperArm, rig, 0.061, 0.061, 0.018, [0, -0.29, 0], 28);
                     cylinder(faction, forearm, rig, 0.046, 0.046, 0.018, [0, -0.29, 0], 28);
@@ -4095,7 +4138,8 @@
 
                 uniformShell(faction, spine, uniform, 0.555,
                     [[0.174, 0.131], [0.217, 0.148], [0.009, 0.012]], [0, 0.02, 0], 44, 24);
-                box(faction, pelvis, uniform, [0.29, 0.16, 0.21], [0, -0.11, 0]);
+                uniformShell(faction, pelvis, uniform, 0.23,
+                    [[0.174, 0.126], [0.181, 0.132], [0.005, 0.004]], [0, -0.005, 0], 40, 20);
                 const waistBelt = torus(faction, pelvis, rig, 0.16, 0.026, [0, -0.025, 0], [Math.PI / 2, 0, 0]);
                 waistBelt.scale.set(1, 0.78, 1);
                 const innerBelt = torus(faction, pelvis, webbingMat, 0.155, 0.009, [0, -0.045, 0], [Math.PI / 2, 0, 0]);
@@ -4214,6 +4258,39 @@
                     box(faction, vest, patch, [0.027, 0.006, 0.004], [x, 0.028, -0.218]);
                     box(faction, vest, webbingMat, [0.052, 0.009, 0.009], [x, -0.039, -0.217]);
                 }
+                for (let side = -1; side <= 1; side += 2) {
+                    const shoulderStrap = box(faction, vest, webbingMat, [0.036, 0.30, 0.016],
+                        [side * 0.118, 0.087, -0.206], [0, 0, side * 0.16]);
+                    shoulderStrap.castShadow = true;
+                    box(faction, vest, patch, [0.018, 0.022, 0.008],
+                        [side * 0.126, 0.075, -0.218], [0, 0, side * 0.16]);
+                    for (let strapLoop = 0; strapLoop < 3; strapLoop++) {
+                        box(faction, vest, rig, [0.044, 0.012, 0.008],
+                            [side * (0.105 + strapLoop * 0.006), 0.16 - strapLoop * 0.064, -0.219],
+                            [0, 0, side * 0.16]);
+                    }
+                }
+                box(faction, vest, rubberMat, [0.105, 0.045, 0.012], [0.005, 0.183, -0.223]);
+                box(faction, vest, faction === 'CT' ? ctMarkMat : tMarkMat,
+                    [0.078, 0.012, 0.004], [0.005, 0.183, -0.231]);
+                box(faction, vest, patch, [0.032, 0.006, 0.003], [-0.016, 0.167, -0.232]);
+                for (let adminLine = 0; adminLine < 3; adminLine++) {
+                    box(faction, vest, patch, [0.018, 0.003, 0.003],
+                        [0.035, 0.171 + adminLine * 0.009, -0.232]);
+                }
+                cable(faction, vest, webbingMat, [
+                    [-0.19, 0.19, -0.15],
+                    [-0.14, 0.23, -0.19],
+                    [-0.07, 0.22, -0.225],
+                    [0.00, 0.20, -0.232],
+                    [0.09, 0.22, -0.224],
+                    [0.16, 0.19, -0.18]
+                ], 0.0025);
+                for (let panelSeam = 0; panelSeam < 3; panelSeam++) {
+                    const y = -0.116 + panelSeam * 0.043;
+                    box(faction, vest, patch, [0.0025, 0.025, 0.002], [-0.201, y, -0.14]);
+                    box(faction, vest, patch, [0.0025, 0.025, 0.002], [0.201, y, -0.14]);
+                }
 
                 [-1, 1].forEach((side) => {
                     const shoulder = side === 1 ? skeletonRig.rightUpperArmSeg : skeletonRig.leftUpperArmSeg;
@@ -4251,6 +4328,35 @@
                 box(faction, head, rubberMat, [0.018, 0.032, 0.01], [0.073, -0.025, -0.072]);
                 box(faction, head, patch, [0.026, 0.006, 0.004], [-0.019, -0.055, -0.122]);
                 box(faction, head, patch, [0.026, 0.006, 0.004], [0.019, -0.055, -0.122]);
+                cable(faction, head, rubberMat, [
+                    [-0.09, 0.025, -0.025],
+                    [-0.085, -0.025, -0.065],
+                    [-0.045, -0.064, -0.088],
+                    [0.00, -0.072, -0.09],
+                    [0.045, -0.064, -0.088],
+                    [0.085, -0.025, -0.065],
+                    [0.09, 0.025, -0.025]
+                ], 0.003);
+                if (faction === 'CT') {
+                    for (let side = -1; side <= 1; side += 2) {
+                        const filter = cylinder(faction, head, rubberMat, 0.018, 0.021, 0.024,
+                            [side * 0.056, -0.039, -0.121], 12);
+                        filter.rotation.x = Math.PI / 2;
+                        box(faction, head, armorMat, [0.022, 0.026, 0.006],
+                            [side * 0.056, -0.039, -0.137]);
+                        for (let vent = 0; vent < 3; vent++) {
+                            box(faction, head, patch, [0.0025, 0.012, 0.002],
+                                [side * 0.056, -0.047 + vent * 0.008, -0.141]);
+                        }
+                    }
+                    box(faction, head, armorMat, [0.042, 0.034, 0.018], [0, -0.038, -0.121]);
+                    box(faction, head, rubberMat, [0.027, 0.006, 0.003], [0, -0.034, -0.132]);
+                } else {
+                    for (let fold = 0; fold < 4; fold++) {
+                        box(faction, head, tRig, [0.104 - fold * 0.009, 0.004, 0.004],
+                            [0, -0.008 - fold * 0.013, -0.119 + fold * 0.001]);
+                    }
+                }
             };
 
             limbKit('CT', ctUniform, ctRig, armorMat, bootMat, lensMat, ctMarkMat, armorMat);
