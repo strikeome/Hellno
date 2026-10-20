@@ -586,7 +586,7 @@
 
         <!-- CS2 Özel Eldiven Modelleri (20 Çeşit) -->
         <div class="text-[10px] text-sky-400 font-bold pt-1 flex items-center justify-between">
-            <span>🧤 CS2 Özel Taktik & Spor Eldivenler (20 Desen):</span>
+            <span>🧤 CS2 Özel Taktik & Spor Eldivenler (22 Model):</span>
             <span class="text-[9px] mono bg-sky-500/20 text-sky-300 px-1.5 py-0.5 rounded">CS2 GLOVES</span>
         </div>
         <div class="grid grid-cols-3 gap-1.5">
@@ -649,6 +649,12 @@
             </button>
             <button id="btn-glove-sportred" onclick="setGloveSkinTheme('SPORTRED')" class="glove-btn px-2 py-1.5 rounded-lg text-[9px] font-bold border border-slate-700 text-white text-center" style="background: linear-gradient(135deg, #991b1b, #ef4444, #f8fafc);">
                 🏁 Sport Red
+            </button>
+            <button id="btn-glove-fullcover" onclick="setGloveSkinTheme('FULLCOVER')" class="glove-btn px-2 py-1.5 rounded-lg text-[9px] font-bold border border-slate-700 text-white text-center" style="background: linear-gradient(135deg, #475569, #111827, #94a3b8);">
+                🧤 Full Cover
+            </button>
+            <button id="btn-glove-gauntlet" onclick="setGloveSkinTheme('GAUNTLET')" class="glove-btn px-2 py-1.5 rounded-lg text-[9px] font-bold border border-slate-700 text-white text-center" style="background: linear-gradient(135deg, #111827, #f59e0b, #475569);">
+                🛡 Gauntlet
             </button>
         </div>
 
@@ -1632,7 +1638,9 @@
                 BLOODHOUND: { bg1: '#450a0a', bg2: '#171717', stripe: '#be123c', knuckle: '#991b1b', pattern: 'claw' },
                 SPECIALIST: { bg1: '#1e3a8a', bg2: '#111827', stripe: '#db2777', knuckle: '#2563eb', pattern: 'weave' },
                 DRIVER: { bg1: '#f8fafc', bg2: '#334155', stripe: '#0f172a', knuckle: '#94a3b8', pattern: 'rivet' },
-                SPORTRED: { bg1: '#991b1b', bg2: '#450a0a', stripe: '#f8fafc', knuckle: '#ef4444', pattern: 'racing' }
+                SPORTRED: { bg1: '#991b1b', bg2: '#450a0a', stripe: '#f8fafc', knuckle: '#ef4444', pattern: 'racing' },
+                FULLCOVER: { bg1: '#475569', bg2: '#111827', stripe: '#cbd5e1', knuckle: '#64748b', pattern: 'fullcover' },
+                GAUNTLET: { bg1: '#111827', bg2: '#292524', stripe: '#f59e0b', knuckle: '#64748b', pattern: 'gauntlet' }
             };
             const pal = themes[gloveTheme] || themes.VICE;
 
@@ -1722,6 +1730,21 @@
             } else if (pal.pattern === 'racing') {
                 ctx.fillStyle = 'rgba(248,250,252,0.85)';
                 for (let y = 0; y < 560; y += 128) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(185, y + 40); ctx.lineTo(185, y + 72); ctx.lineTo(0, y + 32); ctx.closePath(); ctx.fill(); }
+            } else if (pal.pattern === 'fullcover') {
+                ctx.strokeStyle = 'rgba(226,232,240,0.68)'; ctx.lineWidth = 5;
+                for (let x = 36; x < 512; x += 76) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 24, 512); ctx.stroke(); }
+                ctx.strokeStyle = 'rgba(15,23,42,0.72)'; ctx.lineWidth = 12;
+                for (let y = 70; y < 512; y += 112) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(512, y + 48); ctx.stroke(); }
+            } else if (pal.pattern === 'gauntlet') {
+                ctx.fillStyle = 'rgba(245,158,11,0.82)';
+                for (let i = 0; i < 7; i++) {
+                    const x = 26 + i * 78;
+                    ctx.fillRect(x, 70, 34, 372);
+                    ctx.fillRect(x - 12, 70, 58, 12);
+                    ctx.fillRect(x - 12, 430, 58, 12);
+                }
+                ctx.strokeStyle = 'rgba(248,250,252,0.42)'; ctx.lineWidth = 4;
+                for (let y = 0; y < 512; y += 64) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(512, y); ctx.stroke(); }
             }
 
             const tex = new THREE.CanvasTexture(c);
@@ -2253,6 +2276,8 @@
         function buildArticulatedHand(side) {
             const handGroup = new THREE.Group();
             handGroup.name = side === 1 ? "RightHand" : "LeftHand";
+            const gloveWrapRings = [];
+            const gloveKnucklePads = [];
 
             const carpalBall = createMusclePart(0.030, 0.026, 0.022, 'skin', 14);
             carpalBall.position.set(0, 0.004, 0);
@@ -2317,6 +2342,12 @@
             }), 'skin', true);
             thumbP1.position.y = 0.016;
             thumbBase.add(thumbP1);
+            const thumbP1Glove = createLoftedAnatomicalMesh(0.031, 8, 12, (v) => ({
+                rx: THREE.MathUtils.lerp(0.0110, 0.0094, v),
+                rz: THREE.MathUtils.lerp(0.0104, 0.0088, v)
+            }), 'gloveLeather', true);
+            thumbP1Glove.position.y = 0.016;
+            thumbBase.add(thumbP1Glove);
 
             const thumbDistal = new THREE.Group();
             thumbDistal.position.y = 0.031;
@@ -2326,6 +2357,12 @@
             }), 'skin', true);
             thumbP2.position.y = 0.013;
             thumbDistal.add(thumbP2);
+            const thumbP2Glove = createLoftedAnatomicalMesh(0.025, 8, 12, (v) => ({
+                rx: THREE.MathUtils.lerp(0.0094, 0.0076, v),
+                rz: THREE.MathUtils.lerp(0.0088, 0.0070, v)
+            }), 'gloveLeather', true);
+            thumbP2Glove.position.y = 0.013;
+            thumbDistal.add(thumbP2Glove);
 
             const thumbNail = new THREE.Mesh(new THREE.BoxGeometry(0.0082, 0.0095, 0.0016), sharedMaterials.nail);
             thumbNail.position.set(0, 0.018, -0.0066);
@@ -2345,6 +2382,21 @@
 
             handGroup.userData.fingers = {};
 
+            const addWrapRing = (parent, length, radius, position) => {
+                const ring = new THREE.Mesh(
+                    new THREE.TorusGeometry(radius * 0.96, radius * 0.20, 6, 12),
+                    sharedMaterials.gloveKnuckle
+                );
+                ring.rotation.x = Math.PI / 2;
+                ring.position.y = length * position;
+                ring.visible = false;
+                gloveMeshes.push(ring);
+                gloveWrapRings.push(ring);
+                parent.add(ring);
+            };
+            addWrapRing(thumbBase, 0.032, 0.010, 0.72);
+            addWrapRing(thumbDistal, 0.026, 0.008, 0.56);
+
             fingerSpecs.forEach((fs) => {
                 const skinKnuckle = createMusclePart(fs.rad * 1.15, fs.rad * 1.1, fs.rad * 1.1, 'skin', 10);
                 skinKnuckle.position.set(fs.x, 0.078, -0.003);
@@ -2353,16 +2405,17 @@
                 const hardKnuckle = createMusclePart(fs.rad * 1.38, fs.rad * 1.24, fs.rad * 1.04, 'gloveKnuckle', 10);
                 hardKnuckle.position.set(fs.x, 0.077, -0.012);
                 handGroup.add(hardKnuckle);
+                gloveKnucklePads.push(hardKnuckle);
 
                 const mcpJoint = new THREE.Group();
                 mcpJoint.position.set(fs.x, 0.079, 0);
 
                 const len1 = 0.033 * fs.len;
-                const fingerGloveSleeve = createLoftedAnatomicalMesh(len1 * 0.65, 6, 12, (v) => ({
-                    rx: THREE.MathUtils.lerp(fs.rad * 1.12, fs.rad * 1.04, v),
-                    rz: THREE.MathUtils.lerp(fs.rad * 1.10, fs.rad * 1.02, v)
+                const fingerGloveSleeve = createLoftedAnatomicalMesh(len1 * 0.96, 8, 12, (v) => ({
+                    rx: THREE.MathUtils.lerp(fs.rad * 1.13, fs.rad * 1.07, v),
+                    rz: THREE.MathUtils.lerp(fs.rad * 1.11, fs.rad * 1.05, v)
                 }), 'gloveLeather', true);
-                fingerGloveSleeve.position.y = len1 * 0.30;
+                fingerGloveSleeve.position.y = len1 * 0.50;
                 mcpJoint.add(fingerGloveSleeve);
 
                 const p1 = createLoftedAnatomicalMesh(len1, 8, 12, (v) => ({
@@ -2375,6 +2428,12 @@
                 const pipJoint = new THREE.Group();
                 pipJoint.position.y = len1;
                 const len2 = 0.025 * fs.len;
+                const fingerGloveMiddle = createLoftedAnatomicalMesh(len2 * 0.96, 8, 12, (v) => ({
+                    rx: THREE.MathUtils.lerp(fs.rad * 0.96, fs.rad * 0.83, v),
+                    rz: THREE.MathUtils.lerp(fs.rad * 0.93, fs.rad * 0.80, v)
+                }), 'gloveLeather', true);
+                fingerGloveMiddle.position.y = len2 * 0.50;
+                pipJoint.add(fingerGloveMiddle);
                 const p2 = createLoftedAnatomicalMesh(len2, 8, 12, (v) => ({
                     rx: THREE.MathUtils.lerp(fs.rad * 0.88, fs.rad * 0.76, v),
                     rz: THREE.MathUtils.lerp(fs.rad * 0.85, fs.rad * 0.73, v)
@@ -2385,12 +2444,22 @@
                 const dipJoint = new THREE.Group();
                 dipJoint.position.y = len2;
                 const len3 = 0.019 * fs.len;
+                const fingerGloveTip = createLoftedAnatomicalMesh(len3 * 0.96, 8, 12, (v) => ({
+                    rx: THREE.MathUtils.lerp(fs.rad * 0.83, fs.rad * 0.63, v),
+                    rz: THREE.MathUtils.lerp(fs.rad * 0.80, fs.rad * 0.60, v)
+                }), 'gloveLeather', true);
+                fingerGloveTip.position.y = len3 * 0.50;
+                dipJoint.add(fingerGloveTip);
                 const p3 = createLoftedAnatomicalMesh(len3, 8, 12, (v) => ({
                     rx: THREE.MathUtils.lerp(fs.rad * 0.75, fs.rad * 0.56, v),
                     rz: THREE.MathUtils.lerp(fs.rad * 0.72, fs.rad * 0.50, v)
                 }), 'skin', true);
                 p3.position.y = len3 / 2;
                 dipJoint.add(p3);
+
+                addWrapRing(mcpJoint, len1, fs.rad * 1.12, 0.80);
+                addWrapRing(pipJoint, len2, fs.rad * 0.92, 0.60);
+                addWrapRing(dipJoint, len3, fs.rad * 0.78, 0.52);
 
                 const nail = new THREE.Mesh(new THREE.BoxGeometry(fs.rad * 1.12, 0.0085, 0.0015), sharedMaterials.nail);
                 nail.position.set(0, len3 * 0.64, -fs.rad * 0.62);
@@ -2402,6 +2471,44 @@
 
                 handGroup.userData.fingers[fs.name] = { mcpJoint, pipJoint, dipJoint };
             });
+
+            const fullCoverGroup = new THREE.Group();
+            fullCoverGroup.visible = false;
+            const fullCoverCuff = createLoftedAnatomicalMesh(0.082, 12, 20, (v) => ({
+                rx: THREE.MathUtils.lerp(0.034, 0.040, v),
+                rz: THREE.MathUtils.lerp(0.025, 0.029, v)
+            }), 'gloveLeather', false);
+            fullCoverCuff.position.y = -0.020;
+            fullCoverGroup.add(fullCoverCuff);
+            const fullCoverBack = createMusclePart(0.037, 0.041, 0.010, 'gloveLeather', 14);
+            fullCoverBack.position.set(0, 0.050, -0.023);
+            fullCoverGroup.add(fullCoverBack);
+            handGroup.add(fullCoverGroup);
+
+            const gloveArmorGroup = new THREE.Group();
+            gloveArmorGroup.visible = false;
+            const armorCuff = createLoftedAnatomicalMesh(0.060, 10, 20, (v) => ({
+                rx: THREE.MathUtils.lerp(0.038, 0.043, v),
+                rz: THREE.MathUtils.lerp(0.028, 0.031, v)
+            }), 'gloveKnuckle', false);
+            armorCuff.position.y = -0.013;
+            gloveArmorGroup.add(armorCuff);
+            const armorBackplate = createMusclePart(0.038, 0.036, 0.012, 'gloveKnuckle', 14);
+            armorBackplate.position.set(0, 0.051, -0.026);
+            gloveArmorGroup.add(armorBackplate);
+            fingerSpecs.forEach((fs) => {
+                const fingerArmor = createMusclePart(fs.rad * 1.58, fs.rad * 1.18, fs.rad * 0.84, 'gloveKnuckle', 10);
+                fingerArmor.position.set(fs.x, 0.078, -0.020);
+                gloveArmorGroup.add(fingerArmor);
+            });
+            handGroup.add(gloveArmorGroup);
+
+            handGroup.userData.gloveWrapRings = gloveWrapRings;
+            handGroup.userData.gloveKnucklePads = gloveKnucklePads;
+            handGroup.userData.gloveFullCoverGroup = fullCoverGroup;
+            handGroup.userData.gloveArmorGroup = gloveArmorGroup;
+            handGroup.userData.gloveDorsalPlate = dorsalArmorPlate;
+            handGroup.userData.gloveWristBuckle = wristStrapBuckle;
 
             return handGroup;
         }
@@ -5220,6 +5327,7 @@
             const bodyMat = mode === 'ECORCHE' ? sharedMaterials.muscle : sharedMaterials.skin;
             skinMeshes.forEach(m => m.material = bodyMat);
             gloveMeshes.forEach(m => m.visible = (mode === 'GLOVED'));
+            applyGloveModelStyle();
             clothesMeshes.forEach(m => m.visible = (mode !== 'ECORCHE'));
             updateFactionCoverage();
         }
@@ -5246,12 +5354,29 @@
             sharedMaterials.damascusBlade.needsUpdate = true;
         }
 
+        function applyGloveModelStyle() {
+            const isGloved = state.skinMode === 'GLOVED';
+            const isWrapStyle = state.gloveTheme === 'HANDWRAPS';
+            const isFullCover = state.gloveTheme === 'FULLCOVER';
+            const isArmored = ['TACTICAL', 'MOTO', 'DRIVER', 'GAUNTLET'].includes(state.gloveTheme);
+
+            [skeletonRig.leftHand, skeletonRig.rightHand].forEach(hand => {
+                if (!hand) return;
+                hand.userData.gloveWrapRings.forEach(ring => { ring.visible = isGloved && isWrapStyle; });
+                hand.userData.gloveFullCoverGroup.visible = isGloved && isFullCover;
+                hand.userData.gloveArmorGroup.visible = isGloved && isArmored;
+                hand.userData.gloveKnucklePads.forEach(pad => { pad.visible = isGloved && !isWrapStyle && !isFullCover && !isArmored; });
+                hand.userData.gloveDorsalPlate.visible = isGloved && !isWrapStyle && !isFullCover && !isArmored;
+                hand.userData.gloveWristBuckle.visible = isGloved && !isWrapStyle && !isFullCover;
+            });
+        }
+
         function setGloveSkinTheme(gTheme) {
             state.gloveTheme = gTheme;
-            ['vice', 'pandora', 'crimson', 'fade', 'cobra', 'tactical', 'diamondback', 'mogul', 'cobalt', 'arid', 'omega', 'slingshot', 'bloodhound', 'specialist', 'driver', 'sportred'].forEach(gt => {
+            ['vice', 'pandora', 'crimson', 'fade', 'cobra', 'tactical', 'diamondback', 'mogul', 'cobalt', 'arid', 'omega', 'slingshot', 'handwraps', 'brokenfang', 'caution', 'moto', 'bloodhound', 'specialist', 'driver', 'sportred', 'fullcover', 'gauntlet'].forEach(gt => {
                 const btn = document.getElementById(`btn-glove-${gt}`);
                 if (btn) {
-                    const isAct = (gt.toUpperCase() === gTheme || (gt === 'fade' && gTheme === 'GLOVEFADE') || (gt === 'tactical' && gTheme === 'TACTICAL'));
+                    const isAct = (gt.toUpperCase() === gTheme || (gt === 'fade' && gTheme === 'GLOVEFADE'));
                     btn.classList.toggle('active', isAct);
                 }
             });
@@ -5263,6 +5388,7 @@
             sharedMaterials.gloveLeather.needsUpdate = true;
             sharedMaterials.gloveKnuckle.color.set(data.knuckleHex);
             sharedMaterials.gloveKnuckle.needsUpdate = true;
+            applyGloveModelStyle();
         }
 
         function updateMetallicFloat(val) {
