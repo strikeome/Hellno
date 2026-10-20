@@ -38,6 +38,54 @@
             width: 100%;
             height: 100%;
         }
+        #inspect-vignette {
+            position: fixed;
+            inset: 0;
+            z-index: 14;
+            pointer-events: none;
+            opacity: 0;
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(3, 7, 12, 0.42) 100%);
+            transition: opacity 0.32s ease;
+        }
+        #inspect-vignette.active { opacity: 1; }
+        #inspect-hud {
+            position: fixed;
+            left: 50%;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+            z-index: 24;
+            width: min(268px, calc(100vw - 36px));
+            pointer-events: none;
+            opacity: 0;
+            transform: translate(-50%, 8px);
+            transition: opacity 0.24s ease, transform 0.24s ease;
+        }
+        #inspect-hud.active { opacity: 1; transform: translate(-50%, 0); }
+        #inspect-hud-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 0 2px 7px;
+            color: rgba(241, 245, 249, 0.86);
+            font: 600 9px 'JetBrains Mono', monospace;
+            letter-spacing: 0;
+            text-transform: uppercase;
+            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+        }
+        #inspect-weapon-name { color: #d9f99d; text-align: right; }
+        #inspect-progress-track {
+            height: 2px;
+            overflow: hidden;
+            background: rgba(226, 232, 240, 0.24);
+            box-shadow: 0 1px 8px rgba(0, 0, 0, 0.65);
+        }
+        #inspect-progress-bar {
+            width: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #85e5d1, #e5f99c 58%, #f3c878);
+            box-shadow: 0 0 10px rgba(191, 244, 199, 0.75);
+            transform-origin: left center;
+        }
         .glass-panel {
             background: rgba(12, 17, 20, 0.88);
             backdrop-filter: blur(14px);
@@ -383,6 +431,15 @@
         <div class="ch-line ch-left" id="ch-l"></div>
         <div class="ch-line ch-right" id="ch-r"></div>
         <div class="ch-dot"></div>
+    </div>
+
+    <div id="inspect-vignette" aria-hidden="true"></div>
+    <div id="inspect-hud" aria-hidden="true">
+        <div id="inspect-hud-row">
+            <span>İNCELEME</span>
+            <span id="inspect-weapon-name">M4A1 SOPMOD C8</span>
+        </div>
+        <div id="inspect-progress-track"><div id="inspect-progress-bar"></div></div>
     </div>
 
     <div id="hitmarker" style="position:fixed; top:50%; left:50%; width:32px; height:32px; transform:translate(-50%,-50%) scale(0.75); pointer-events:none; z-index:21; opacity:0; transition:opacity 0.08s ease, transform 0.08s ease;">
@@ -798,6 +855,7 @@
 
     <script>
         let scene, camera, pipCamera, renderer, clock, metallicEnvCubeMap;
+        let inspectKeyLight, inspectFillLight;
         let mapBuilder, tacticalMapData;
         let humanRoot, skeletonRig = {};
         const factionOutfits = { CT: [], T: [] };
@@ -854,6 +912,8 @@
             knifeComboIndex: 0,
             weaponInspectTimer: 0,
             weaponInspectDuration: 1.4,
+            weaponInspectFocus: 0,
+            inspectPresentation: 0,
             inspectCueIndex: 0,
             equipTransition: 0,
             faction: 'CT'
@@ -990,6 +1050,28 @@
                     gain.connect(audioCtx.destination);
                     osc.start(now);
                     osc.stop(now + 0.06);
+                } else if (type === 'inspect-open') {
+                    const bufferSize = Math.floor(audioCtx.sampleRate * 0.22);
+                    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.07));
+                    }
+                    const noise = audioCtx.createBufferSource();
+                    noise.buffer = buffer;
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(1800, now);
+                    filter.frequency.exponentialRampToValueAtTime(420, now + 0.20);
+                    const gain = audioCtx.createGain();
+                    gain.gain.setValueAtTime(0.001, now);
+                    gain.gain.linearRampToValueAtTime(0.055, now + 0.035);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+                    noise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    noise.start(now);
+                    noise.stop(now + 0.23);
                 } else if (type === 'inspect-catch') {
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
@@ -4756,9 +4838,50 @@
           }
         }
         
+        function updateInspectPresentation(dt) {
+            const targetFocus = state.weaponInspectFocus;
+            state.inspectPresentation = THREE.MathUtils.lerp(
+                state.inspectPresentation,
+                targetFocus,
+                1 - Math.exp(-dt * 8)
+            );
+
+            const progress = state.weaponInspectTimer > 0
+                ? 1 - state.weaponInspectTimer / state.weaponInspectDuration
+                : 1;
+            const weaponNames = {
+                RIFLE: 'M4A1 SOPMOD C8', AK47: 'AK-47 CLASSIC', AWP: 'AWP LONG RANGE', DEAGLE: 'DESERT EAGLE',
+                BAYONET: 'M9 BAYONET', KARAMBIT: 'KARAMBIT', BUTTERFLY: 'BUTTERFLY KNIFE', TALON: 'TALON KNIFE',
+                BOWIE: 'BOWIE KNIFE', HUNTSMAN: 'HUNTSMAN KNIFE'
+            };
+            const isVisible = state.weaponInspectTimer > 0 || state.inspectPresentation > 0.015;
+            const hud = document.getElementById('inspect-hud');
+            hud.classList.toggle('active', isVisible);
+            document.getElementById('inspect-vignette').classList.toggle('active', state.inspectPresentation > 0.02);
+            document.getElementById('inspect-weapon-name').textContent = weaponNames[state.equipped] || state.equipped;
+            document.getElementById('inspect-progress-bar').style.width = `${THREE.MathUtils.clamp(progress, 0, 1) * 100}%`;
+            document.getElementById('crosshair').style.opacity = `${1 - state.inspectPresentation * 0.92}`;
+
+            if (!inspectKeyLight || !inspectFillLight) return;
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+            inspectKeyLight.position.copy(camera.position)
+                .addScaledVector(forward, 0.38)
+                .addScaledVector(right, -0.24)
+                .addScaledVector(up, 0.19);
+            inspectFillLight.position.copy(camera.position)
+                .addScaledVector(forward, 0.34)
+                .addScaledVector(right, 0.28)
+                .addScaledVector(up, -0.08);
+            inspectKeyLight.intensity = state.inspectPresentation * 2.0;
+            inspectFillLight.intensity = state.inspectPresentation * 0.8;
+        }
+
         function updateTwoHandedWeaponIK(adsFactor, recoilOffset, dt) {
           const mount = skeletonRig.weaponMount;
           if (!mount) return;
+          state.weaponInspectFocus = 0;
           
           const isKnife = isKnifeType();
           const aspect = window.innerWidth / window.innerHeight;
@@ -4864,6 +4987,7 @@
             const focusIn = THREE.MathUtils.smootherstep(inspectProgress, 0.08, 0.25);
             const focusOut = THREE.MathUtils.smootherstep(inspectProgress, 0.76, 0.98);
             const inspectFocus = focusIn * (1 - focusOut);
+            state.weaponInspectFocus = inspectFocus;
             const focusZ = state.equipped === 'AWP'
                 ? (isPortrait ? -0.49 : -0.54)
                 : isKnife ? (isPortrait ? -0.39 : -0.43)
@@ -5298,10 +5422,10 @@
         function triggerInspectWeapon() {
             const profile = weaponInspectProfiles[state.equipped] || weaponInspectProfiles.RIFLE;
             state.knifeSlashTimer = 0;
-            state.weaponInspectDuration = profile.duration;
-            state.weaponInspectTimer = profile.duration;
+            state.weaponInspectDuration = profile.duration * 1.35;
+            state.weaponInspectTimer = state.weaponInspectDuration;
             state.inspectCueIndex = 0;
-            playProceduralSound(isKnifeType() ? 'slash' : 'inspect-click');
+            playProceduralSound('inspect-open');
         }
 
         function triggerReloadOrInspect() {
@@ -5902,6 +6026,7 @@
                 camera.lookAt(target);
             }
 
+            updateInspectPresentation(dt);
             renderer.render(scene, camera);
 
             if (state.showPiPMirror && pipCamera) {
@@ -5962,6 +6087,10 @@
             const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.55);
             rimLight.position.set(-7, 6, -8);
             scene.add(rimLight);
+
+            inspectKeyLight = new THREE.PointLight(0xffdcb4, 0, 1.8, 2);
+            inspectFillLight = new THREE.PointLight(0x77d8ff, 0, 1.5, 2);
+            scene.add(inspectKeyLight, inspectFillLight);
 
             const textures = createAnatomicalAndWeaponTextures();
             initMaterials(textures);
