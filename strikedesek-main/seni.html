@@ -180,6 +180,13 @@
             color: rgba(241, 245, 249, 0.78);
             font: 600 9px 'JetBrains Mono', monospace;
         }
+        .desktop-input #touch-controls-layer { display: none !important; }
+        .desktop-input #desktop-lock-prompt { display: block; }
+        .desktop-input.pointer-locked #desktop-lock-prompt { display: none; }
+        @media (min-width: 641px) {
+            #touch-controls-layer { display: none !important; }
+            #desktop-lock-prompt { display: block; }
+        }
         .ch-line {
             position: absolute;
             background: rgba(74, 222, 128, 0.95);
@@ -391,14 +398,6 @@
         @media (max-height: 500px) and (max-width: 900px) {
             #bottom-hud-bar { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 5px); }
             #anatomy-drawer { max-height: 92dvh; }
-        }
-
-        @media (hover: hover) and (pointer: fine) {
-            #touch-controls-layer { display: none; }
-        }
-        @media (min-width: 641px) {
-            #touch-controls-layer { display: none; }
-            #desktop-lock-prompt { display: block; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1023,12 +1022,31 @@
         let audioCtx = null;
         let mouseADS = false;
 
-        function requestGamePointerLock() {
-            if (window.innerWidth <= 640 || document.pointerLockElement) return;
+        function hasDesktopPointer() {
+            return window.matchMedia('(min-width: 641px)').matches ||
+                navigator.maxTouchPoints === 0 ||
+                window.matchMedia('(any-pointer: fine)').matches ||
+                window.screen.width >= 900;
+        }
+
+        function updateDesktopInputMode() {
+            document.documentElement.classList.toggle('desktop-input', hasDesktopPointer());
+        }
+
+        function getGamePointerLockTarget() {
             const container = document.getElementById('canvas-container');
-            if (!container || !container.requestPointerLock) return;
+            return container && (container.querySelector('canvas') || container);
+        }
+
+        function requestGamePointerLock() {
+            if (!hasDesktopPointer() || document.pointerLockElement) return;
+            const target = getGamePointerLockTarget();
+            if (!target || !target.requestPointerLock) {
+                document.getElementById('desktop-lock-status').textContent = 'Bu tarayıcı fare kilidini desteklemiyor.';
+                return;
+            }
             try {
-                const result = container.requestPointerLock();
+                const result = target.requestPointerLock();
                 if (result && typeof result.catch === 'function') {
                     result.catch((error) => {
                         document.getElementById('desktop-lock-status').textContent = 'Fare kilidi alınamadı. Tekrar tıklayıp dene.';
@@ -6403,13 +6421,15 @@
 
         function setupInputHandlers() {
             const container = document.getElementById('canvas-container');
+            const lockTarget = getGamePointerLockTarget();
             const joyZone = document.getElementById('joystick-zone');
             const joyKnob = document.getElementById('joystick-knob');
             const lockPrompt = document.getElementById('desktop-lock-prompt');
 
+            updateDesktopInputMode();
             document.getElementById('desktop-lock-button').addEventListener('click', requestGamePointerLock);
             document.addEventListener('pointerlockchange', () => {
-                lockPrompt.style.display = document.pointerLockElement === container || window.innerWidth <= 640 ? 'none' : '';
+                document.documentElement.classList.toggle('pointer-locked', document.pointerLockElement === lockTarget);
                 document.getElementById('desktop-lock-status').textContent = 'Fareyi kilitle, WASD ile hareket et, ESC ile çık.';
             });
             document.addEventListener('pointerlockerror', () => {
@@ -6484,7 +6504,7 @@
             container.addEventListener('click', requestGamePointerLock);
             window.addEventListener('pointermove', (e) => {
                 let dx, dy;
-                if (e.pointerType === 'mouse' && document.pointerLockElement === container) {
+                if (e.pointerType === 'mouse' && document.pointerLockElement === lockTarget) {
                     dx = e.movementX;
                     dy = e.movementY;
                 } else if (e.pointerId === lookPointerId) {
@@ -6587,6 +6607,7 @@
             window.addEventListener('resize', () => {
                 renderer.setSize(window.innerWidth, window.innerHeight);
                 updateAdaptiveProjection();
+                updateDesktopInputMode();
             });
         }
 
